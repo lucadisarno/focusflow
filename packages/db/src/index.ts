@@ -1,11 +1,11 @@
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "./generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
 function createPrismaClient() {
   const connectionString = process.env["DATABASE_URL"]!;
   const pool = new pg.Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
+  const adapter = new PrismaPg(pool as any);
   return new PrismaClient({ adapter } as any);
 }
 
@@ -19,5 +19,5 @@ if (process.env["NODE_ENV"] !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-export * from "../generated/prisma/client";
+export * from "./generated/prisma/client";
 export type { PrismaClient };
