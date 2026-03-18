@@ -16,14 +16,12 @@ import {
 } from "@/components/ui/select";
 import { ICON_OPTIONS } from "@/components/ui/icon-picker";
 
-// Componente icona dinamica
 function CategoryIcon({ name, color, size = 14 }: { name: string; color: string; size?: number }) {
   const IconComponent = ICON_OPTIONS.find((i) => i.name === name)?.icon;
   if (!IconComponent) return null;
   return <IconComponent size={size} style={{ color }} />;
 }
 
-// Componente TagMultiSelect semplice
 function TagMultiSelect({
   tags,
   selectedIds,
@@ -69,7 +67,6 @@ function TagMultiSelect({
   );
 }
 
-// Configurazione status
 const statusConfig = {
   TODO:        { label: "Da fare",    emoji: "⏳", className: "bg-slate-100 text-slate-600" },
   IN_PROGRESS: { label: "In corso",   emoji: "🔄", className: "bg-blue-100 text-blue-700" },
@@ -82,7 +79,6 @@ const priorityConfig = {
   HIGH:   { label: "Alta",  className: "bg-red-100 text-red-700" },
 };
 
-// Ciclo degli status: TODO → IN_PROGRESS → DONE → TODO
 function nextStatus(current: Task["status"]): Task["status"] {
   if (current === "TODO") return "IN_PROGRESS";
   if (current === "IN_PROGRESS") return "DONE";
@@ -100,6 +96,7 @@ export function TaskPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
+  const [dueDate, setDueDate] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -151,6 +148,7 @@ export function TaskPage() {
         title,
         description,
         priority,
+        dueDate: dueDate || undefined,
         categoryId: categoryId || undefined,
         tagIds: selectedTagIds,
       });
@@ -158,6 +156,7 @@ export function TaskPage() {
       setTitle("");
       setDescription("");
       setPriority("MEDIUM");
+      setDueDate("");
       setCategoryId("");
       setSelectedTagIds([]);
     } catch {
@@ -167,7 +166,6 @@ export function TaskPage() {
     }
   };
 
-  // Cicla lo status al click invece di toggle completed
   const handleToggleStatus = async (task: Task) => {
     try {
       const updated = await taskApi.update(task.id, {
@@ -263,6 +261,17 @@ export function TaskPage() {
               </Select>
             </div>
 
+            {/* Data scadenza */}
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Scadenza (opzionale)</p>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+
             {/* Tag multiselect */}
             {tags.length > 0 && (
               <div className="space-y-1.5">
@@ -339,8 +348,6 @@ export function TaskPage() {
             >
               <CardContent className="pt-4">
                 <div className="flex items-start gap-3">
-
-                  {/* Bottone status ciclico */}
                   <button
                     type="button"
                     onClick={() => handleToggleStatus(task)}
@@ -355,11 +362,9 @@ export function TaskPage() {
                       <p className={`font-medium ${task.status === "DONE" ? "line-through text-muted-foreground" : ""}`}>
                         {task.title}
                       </p>
-                      {/* Badge status */}
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusConfig[task.status].className}`}>
                         {statusConfig[task.status].label}
                       </span>
-                      {/* Badge priorità */}
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityConfig[task.priority].className}`}>
                         {priorityConfig[task.priority].label}
                       </span>
@@ -369,14 +374,12 @@ export function TaskPage() {
                       <p className="text-sm text-muted-foreground">{task.description}</p>
                     )}
 
-                    {/* dueDate */}
                     {task.dueDate && (
                       <p className="text-xs text-muted-foreground">
                         📅 {new Date(task.dueDate).toLocaleDateString("it-IT")}
                       </p>
                     )}
 
-                    {/* Categoria */}
                     {task.category && (
                       <div
                         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium"
@@ -390,7 +393,6 @@ export function TaskPage() {
                       </div>
                     )}
 
-                    {/* Tag */}
                     {task.taskTags && task.taskTags.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {task.taskTags.map(({ tag }) => (

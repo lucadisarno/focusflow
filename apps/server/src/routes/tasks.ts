@@ -24,11 +24,11 @@ export async function taskRoutes(app: FastifyInstance) {
       where: {
         userId: request.currentUser.id,
         ...(categoryId && { categoryId }),
-        ...(tagId && { taskTags: { some: { tagId } } }),
+        ...(tagId && { tags: { some: { tagId } } }),
       },
       include: {
         category: true,
-        taskTags: { include: { tag: true } },
+        tags: { include: { tag: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -55,7 +55,7 @@ export async function taskRoutes(app: FastifyInstance) {
       },
       include: {
         category: true,
-        taskTags: { include: { tag: true } },
+        tags: { include: { tag: true } },
       },
       orderBy: { dueDate: "asc" },
     });
@@ -72,7 +72,7 @@ export async function taskRoutes(app: FastifyInstance) {
         categoryId: task.categoryId,
         categoryColor: task.category?.color ?? "#6366f1",
         categoryName: task.category?.name ?? null,
-        tags: task.taskTags.map((t) => t.tag.name),
+        tags: task.tags.map((t) => t.tag.name),
       },
     }));
 
@@ -117,14 +117,14 @@ export async function taskRoutes(app: FastifyInstance) {
         userId: request.currentUser.id,
         categoryId: categoryId ?? null,
         ...(tagIds && tagIds.length > 0 && {
-          taskTags: {
+          tags: {
             create: tagIds.map((tagId) => ({ tagId })),
           },
         }),
       },
       include: {
         category: true,
-        taskTags: { include: { tag: true } },
+        tags: { include: { tag: true } },
       },
     });
 
@@ -172,14 +172,14 @@ export async function taskRoutes(app: FastifyInstance) {
         }),
         ...(categoryId !== undefined && { categoryId }),
         ...(tagIds !== undefined && tagIds.length > 0 && {
-          taskTags: {
+          tags: {
             create: tagIds.map((tagId) => ({ tagId })),
           },
         }),
       },
       include: {
         category: true,
-        taskTags: { include: { tag: true } },
+        tags: { include: { tag: true } },
       },
     });
 

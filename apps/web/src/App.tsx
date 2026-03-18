@@ -5,6 +5,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { TaskPage } from "@/pages/TaskPage";
 import CategoriesPage from "@/pages/CategoriesPage";
 import TagsPage from "@/pages/TagsPage";
+import { CalendarPage } from "@/pages/CalendarPage";
 import { Layout } from "@/components/Layout";
 import { useSession } from "@/lib/auth-client";
 
@@ -61,6 +62,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <TagsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <CalendarPage />
             </ProtectedRoute>
           }
         />

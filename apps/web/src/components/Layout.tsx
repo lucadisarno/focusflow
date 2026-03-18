@@ -2,13 +2,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, CheckSquare, FolderOpen, Tags, LogOut } from "lucide-react";
+import { LayoutDashboard, CheckSquare, FolderOpen, Tags, CalendarDays, LogOut } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { label: "Task", path: "/tasks", icon: CheckSquare },
-  { label: "Categorie", path: "/categories", icon: FolderOpen },
-  { label: "Tag", path: "/tags", icon: Tags },
+  { label: "Dashboard",  path: "/dashboard",  icon: LayoutDashboard },
+  { label: "Task",       path: "/tasks",       icon: CheckSquare },
+  { label: "Categorie",  path: "/categories",  icon: FolderOpen },
+  { label: "Tag",        path: "/tags",        icon: Tags },
+  { label: "Calendario", path: "/calendar",    icon: CalendarDays },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
