@@ -1,35 +1,31 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// ============================================
-// USER
-// ============================================
+// ─── USER ────────────────────────────────────────────────────────────────────
+
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  id            String     @id @default(cuid())
   name          String?
+  email         String     @unique
+  emailVerified Boolean    @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   sessions      Session[]
   accounts      Account[]
   tasks         Task[]
-  focusSessions FocusSession[]
+  categories    Category[]
+  tags          Tag[]
 
   @@map("users")
 }
 
-// ============================================
-// AUTH (BetterAuth)
-// ============================================
 model Session {
   id        String   @id @default(cuid())
   userId    String
@@ -46,19 +42,19 @@ model Session {
 }
 
 model Account {
-  id                   String    @id @default(cuid())
-  userId               String
-  accountId            String
-  providerId           String
-  accessToken          String?
-  refreshToken         String?
-  accessTokenExpiresAt DateTime?
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
-  scope                String?
-  idToken              String?
-  password             String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -76,40 +72,93 @@ model Verification {
   @@map("verifications")
 }
 
-// ============================================
-// FOCUSFLOW CORE
-// ============================================
+// ─── CATEGORY ────────────────────────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#6366f1")
+  icon      String   @default("folder")
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([name, userId])
+  @@map("categories")
+}
+
+// ─── TAG ─────────────────────────────────────────────────────────────────────
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#8b5cf6")
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskTags TaskTag[]
+
+  @@unique([name, userId])
+  @@map("tags")
+}
+
+// ─── TASK ────────────────────────────────────────────────────────────────────
+
 model Task {
   id          String    @id @default(cuid())
-  userId      String
   title       String
   description String?
   completed   Boolean   @default(false)
   priority    Priority  @default(MEDIUM)
   dueDate     DateTime?
+  userId      String
+  categoryId  String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  taskTags      TaskTag[]
   focusSessions FocusSession[]
 
   @@map("tasks")
 }
 
+// ─── TASK-TAG ─────────────────────────────────────────────────────────────────
+
+model TaskTag {
+  taskId String
+  tagId  String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+  @@map("task_tags")
+}
+
+// ─── FOCUS SESSION ────────────────────────────────────────────────────────────
+
 model FocusSession {
   id        String    @id @default(cuid())
   userId    String
   taskId    String?
-  duration  Int       // durata in secondi
+  duration  Int
   startedAt DateTime  @default(now())
   endedAt   DateTime?
   createdAt DateTime  @default(now())
 
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
   @@map("focus_sessions")
 }
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
 
 enum Priority {
   LOW

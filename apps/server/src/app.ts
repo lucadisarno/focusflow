@@ -3,6 +3,8 @@ import cors from "@fastify/cors";
 import { authPlugin } from "./plugins/auth.plugin.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
+import { categoriesRoutes } from "./routes/categories.js";
+import { tagsRoutes } from "./routes/tags.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -26,6 +28,8 @@ export function buildApp() {
   // Routes
   app.register(taskRoutes, { prefix: "/api/tasks" });
   app.register(dashboardRoutes, { prefix: "/api/dashboard" });
+  app.register(categoriesRoutes, { prefix: "/api/categories" });
+  app.register(tagsRoutes, { prefix: "/api/tags" });
 
   return app;
 }

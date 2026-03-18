@@ -12,34 +12,83 @@ export async function taskRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: "Non autorizzato" });
     }
 
-    // Rendiamo l'utente disponibile nelle route
     request.currentUser = session.user;
   });
 
   // ─── GET /api/tasks ───────────────────────────────────────
-  app.get("/", async (request, reply) => {
+  app.get<{
+    Querystring: { categoryId?: string; tagId?: string };
+  }>("/", async (request, reply) => {
+    const { categoryId, tagId } = request.query;
+
     const tasks = await prisma.task.findMany({
-      where: { userId: request.currentUser.id },
+      where: {
+        userId: request.currentUser.id,
+        // filtro opzionale per categoria
+        ...(categoryId && { categoryId }),
+        // filtro opzionale per tag
+        ...(tagId && {
+          taskTags: { some: { tagId } },
+        }),
+      },
+      include: {
+        category: true, // ← NUOVO: include dati categoria
+        taskTags: {
+          include: { tag: true }, // ← NUOVO: include tag associati
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
+
     return reply.send(tasks);
   });
 
   // ─── POST /api/tasks ──────────────────────────────────────
   app.post<{
-    Body: { title: string; description?: string };
+    Body: {
+      title: string;
+      description?: string;
+      priority?: "LOW" | "MEDIUM" | "HIGH";
+      dueDate?: string;
+      categoryId?: string;  // ← NUOVO
+      tagIds?: string[];    // ← NUOVO
+    };
   }>("/", async (request, reply) => {
-    const { title, description } = request.body;
+    const { title, description, priority, dueDate, categoryId, tagIds } =
+      request.body;
 
     if (!title || title.trim() === "") {
       return reply.status(400).send({ error: "Il titolo è obbligatorio" });
+    }
+
+    // Se categoryId fornito, verifica che appartenga all'utente
+    if (categoryId) {
+      const cat = await prisma.category.findFirst({
+        where: { id: categoryId, userId: request.currentUser.id },
+      });
+      if (!cat) {
+        return reply.status(400).send({ error: "Categoria non valida" });
+      }
     }
 
     const task = await prisma.task.create({
       data: {
         title: title.trim(),
         description: description?.trim(),
+        priority: priority ?? "MEDIUM",
+        dueDate: dueDate ? new Date(dueDate) : undefined,
         userId: request.currentUser.id,
+        categoryId: categoryId ?? null,
+        // crea le relazioni TaskTag se tagIds forniti
+        ...(tagIds && tagIds.length > 0 && {
+          taskTags: {
+            create: tagIds.map((tagId) => ({ tagId })),
+          },
+        }),
+      },
+      include: {
+        category: true,
+        taskTags: { include: { tag: true } },
       },
     });
 
@@ -49,12 +98,20 @@ export async function taskRoutes(app: FastifyInstance) {
   // ─── PATCH /api/tasks/:id ─────────────────────────────────
   app.patch<{
     Params: { id: string };
-    Body: { title?: string; description?: string; completed?: boolean };
+    Body: {
+      title?: string;
+      description?: string;
+      completed?: boolean;
+      priority?: "LOW" | "MEDIUM" | "HIGH";
+      dueDate?: string;
+      categoryId?: string | null; // ← NUOVO (null = rimuove categoria)
+      tagIds?: string[];           // ← NUOVO (sostituisce tutti i tag)
+    };
   }>("/:id", async (request, reply) => {
     const { id } = request.params;
-    const { title, description, completed } = request.body;
+    const { title, description, completed, priority, dueDate, categoryId, tagIds } =
+      request.body;
 
-    // Verifica che il task appartenga all'utente
     const existing = await prisma.task.findFirst({
       where: { id, userId: request.currentUser.id },
     });
@@ -63,39 +120,52 @@ export async function taskRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "Task non trovato" });
     }
 
+    // Se tagIds forniti, sostituiamo tutti i tag (delete + create)
+    if (tagIds !== undefined) {
+      await prisma.taskTag.deleteMany({ where: { taskId: id } });
+    }
+
     const updated = await prisma.task.update({
       where: { id },
       data: {
         ...(title !== undefined && { title: title.trim() }),
         ...(description !== undefined && { description: description.trim() }),
         ...(completed !== undefined && { completed }),
+        ...(priority !== undefined && { priority }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(categoryId !== undefined && { categoryId }),
+        // ricrea i tag se forniti
+        ...(tagIds !== undefined && tagIds.length > 0 && {
+          taskTags: {
+            create: tagIds.map((tagId) => ({ tagId })),
+          },
+        }),
+      },
+      include: {
+        category: true,
+        taskTags: { include: { tag: true } },
       },
     });
 
     return reply.send(updated);
   });
 
-// ─── DELETE /api/tasks/:id ────────────────────────────────
-app.delete<{
-  Params: { id: string };
-}>("/:id", async (request, reply) => {
-  const { id } = request.params;
+  // ─── DELETE /api/tasks/:id ────────────────────────────────
+  app.delete<{
+    Params: { id: string };
+  }>("/:id", async (request, reply) => {
+    const { id } = request.params;
 
-  console.log("DELETE request for id:", id);
-  console.log("currentUser:", request.currentUser?.id);
+    const existing = await prisma.task.findFirst({
+      where: { id, userId: request.currentUser.id },
+    });
 
-  const existing = await prisma.task.findFirst({
-    where: { id, userId: request.currentUser.id },
+    if (!existing) {
+      return reply.status(404).send({ error: "Task non trovato" });
+    }
+
+    await prisma.task.delete({ where: { id } });
+
+    return reply.status(204).send();
   });
-
-  console.log("existing task:", existing);
-
-  if (!existing) {
-    return reply.status(404).send({ error: "Task non trovato" });
-  }
-
-  await prisma.task.delete({ where: { id } });
-
-  return reply.status(204).send();
-});
 }
