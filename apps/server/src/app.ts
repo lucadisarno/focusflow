@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { authPlugin } from "./plugins/auth.plugin.js";
 import { taskRoutes } from "./routes/tasks.js";
+import { dashboardRoutes } from "./routes/dashboard.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -24,6 +25,7 @@ export function buildApp() {
 
   // Routes
   app.register(taskRoutes, { prefix: "/api/tasks" });
+  app.register(dashboardRoutes, { prefix: "/api/dashboard" });
 
   return app;
 }
