@@ -63,6 +63,28 @@ export interface DashboardStats {
   recentTasks: Pick<Task, "id" | "title" | "completed" | "createdAt">[];
 }
 
+// Aggiungi questo nuovo tipo
+export interface CategoryStat {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  total: number;
+  completed: number;
+  completionRate: number;
+}
+
+export interface DashboardStats {
+  stats: {
+    total: number;
+    completed: number;
+    pending: number;
+    completionRate: number;
+  };
+  recentTasks: Pick<Task, "id" | "title" | "completed" | "createdAt">[];
+  categoryStats: CategoryStat[]; // ← NUOVO
+}
+
 // ─── Task API ─────────────────────────────────────────────
 export const taskApi = {
   getAll: (params?: { categoryId?: string; tagId?: string }) => {
