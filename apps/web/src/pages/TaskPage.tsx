@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -70,6 +69,26 @@ function TagMultiSelect({
   );
 }
 
+// Configurazione status
+const statusConfig = {
+  TODO:        { label: "Da fare",    emoji: "⏳", className: "bg-slate-100 text-slate-600" },
+  IN_PROGRESS: { label: "In corso",   emoji: "🔄", className: "bg-blue-100 text-blue-700" },
+  DONE:        { label: "Completato", emoji: "✅", className: "bg-green-100 text-green-700" },
+};
+
+const priorityConfig = {
+  LOW:    { label: "Bassa", className: "bg-slate-100 text-slate-600" },
+  MEDIUM: { label: "Media", className: "bg-yellow-100 text-yellow-700" },
+  HIGH:   { label: "Alta",  className: "bg-red-100 text-red-700" },
+};
+
+// Ciclo degli status: TODO → IN_PROGRESS → DONE → TODO
+function nextStatus(current: Task["status"]): Task["status"] {
+  if (current === "TODO") return "IN_PROGRESS";
+  if (current === "IN_PROGRESS") return "DONE";
+  return "TODO";
+}
+
 export function TaskPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -118,10 +137,10 @@ export function TaskPage() {
   };
 
   const handleFilterCategory = async (value: string | null) => {
-  setFilterCategoryId(value ?? "");
-  setLoading(true);
-  await loadTasks(value || undefined);
-};
+    setFilterCategoryId(value ?? "");
+    setLoading(true);
+    await loadTasks(value || undefined);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,9 +167,12 @@ export function TaskPage() {
     }
   };
 
-  const handleToggle = async (task: Task) => {
+  // Cicla lo status al click invece di toggle completed
+  const handleToggleStatus = async (task: Task) => {
     try {
-      const updated = await taskApi.update(task.id, { completed: !task.completed });
+      const updated = await taskApi.update(task.id, {
+        status: nextStatus(task.status),
+      });
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     } catch {
       setError("Errore nell'aggiornamento del task");
@@ -164,12 +186,6 @@ export function TaskPage() {
     } catch {
       setError("Errore nell'eliminazione del task");
     }
-  };
-
-  const priorityConfig = {
-    LOW: { label: "Bassa", className: "bg-slate-100 text-slate-600" },
-    MEDIUM: { label: "Media", className: "bg-yellow-100 text-yellow-700" },
-    HIGH: { label: "Alta", className: "bg-red-100 text-red-700" },
   };
 
   return (
@@ -218,33 +234,33 @@ export function TaskPage() {
               </Select>
 
               <Select value={categoryId} onValueChange={(v) => setCategoryId(v)}>
-  <SelectTrigger className="flex-1">
-    <SelectValue>
-      {categoryId
-        ? (() => {
-            const cat = categories.find((c) => c.id === categoryId);
-            return cat ? (
-              <div className="flex items-center gap-2">
-                <CategoryIcon name={cat.icon} color={cat.color} />
-                {cat.name}
-              </div>
-            ) : "Categoria (opzionale)";
-          })()
-        : "Categoria (opzionale)"}
-    </SelectValue>
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="">Nessuna categoria</SelectItem>
-    {categories.map((cat) => (
-      <SelectItem key={cat.id} value={cat.id}>
-        <div className="flex items-center gap-2">
-          <CategoryIcon name={cat.icon} color={cat.color} />
-          {cat.name}
-        </div>
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+                <SelectTrigger className="flex-1">
+                  <SelectValue>
+                    {categoryId
+                      ? (() => {
+                          const cat = categories.find((c) => c.id === categoryId);
+                          return cat ? (
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name={cat.icon} color={cat.color} />
+                              {cat.name}
+                            </div>
+                          ) : "Categoria (opzionale)";
+                        })()
+                      : "Categoria (opzionale)"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna categoria</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <CategoryIcon name={cat.icon} color={cat.color} />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Tag multiselect */}
@@ -317,19 +333,32 @@ export function TaskPage() {
       ) : (
         <div className="space-y-3">
           {tasks.map((task) => (
-            <Card key={task.id} className={task.completed ? "opacity-60" : ""}>
+            <Card
+              key={task.id}
+              className={task.status === "DONE" ? "opacity-60" : ""}
+            >
               <CardContent className="pt-4">
                 <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={task.completed}
-                    onCheckedChange={() => handleToggle(task)}
-                    className="mt-1"
-                  />
+
+                  {/* Bottone status ciclico */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStatus(task)}
+                    title={`Status: ${statusConfig[task.status].label} — clicca per cambiare`}
+                    className="mt-0.5 text-lg leading-none transition-transform hover:scale-110"
+                  >
+                    {statusConfig[task.status].emoji}
+                  </button>
+
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className={`font-medium ${task.completed ? "line-through" : ""}`}>
+                      <p className={`font-medium ${task.status === "DONE" ? "line-through text-muted-foreground" : ""}`}>
                         {task.title}
                       </p>
+                      {/* Badge status */}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusConfig[task.status].className}`}>
+                        {statusConfig[task.status].label}
+                      </span>
                       {/* Badge priorità */}
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityConfig[task.priority].className}`}>
                         {priorityConfig[task.priority].label}
@@ -338,6 +367,13 @@ export function TaskPage() {
 
                     {task.description && (
                       <p className="text-sm text-muted-foreground">{task.description}</p>
+                    )}
+
+                    {/* dueDate */}
+                    {task.dueDate && (
+                      <p className="text-xs text-muted-foreground">
+                        📅 {new Date(task.dueDate).toLocaleDateString("it-IT")}
+                      </p>
                     )}
 
                     {/* Categoria */}

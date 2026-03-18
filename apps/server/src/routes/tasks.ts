@@ -2,7 +2,6 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "@focusflow/db";
 
 export async function taskRoutes(app: FastifyInstance) {
-  // Middleware: tutte le route qui sotto richiedono autenticazione
   app.addHook("preHandler", async (request, reply) => {
     const session = await request.server.auth.api.getSession({
       headers: request.headers as any,
@@ -24,18 +23,12 @@ export async function taskRoutes(app: FastifyInstance) {
     const tasks = await prisma.task.findMany({
       where: {
         userId: request.currentUser.id,
-        // filtro opzionale per categoria
         ...(categoryId && { categoryId }),
-        // filtro opzionale per tag
-        ...(tagId && {
-          taskTags: { some: { tagId } },
-        }),
+        ...(tagId && { taskTags: { some: { tagId } } }),
       },
       include: {
-        category: true, // ← NUOVO: include dati categoria
-        taskTags: {
-          include: { tag: true }, // ← NUOVO: include tag associati
-        },
+        category: true,
+        taskTags: { include: { tag: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -43,25 +36,68 @@ export async function taskRoutes(app: FastifyInstance) {
     return reply.send(tasks);
   });
 
+  // ─── GET /api/tasks/calendar ──────────────────────────────
+  app.get<{
+    Querystring: { start?: string; end?: string };
+  }>("/calendar", async (request, reply) => {
+    const { start, end } = request.query;
+
+    const tasks = await prisma.task.findMany({
+      where: {
+        userId: request.currentUser.id,
+        dueDate: {
+          not: null,
+          ...(start && end && {
+            gte: new Date(start),
+            lte: new Date(end),
+          }),
+        },
+      },
+      include: {
+        category: true,
+        taskTags: { include: { tag: true } },
+      },
+      orderBy: { dueDate: "asc" },
+    });
+
+    const events = tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      start: task.dueDate!,
+      end: task.dueDate!,
+      allDay: true,
+      resource: {
+        status: task.status,
+        priority: task.priority,
+        categoryId: task.categoryId,
+        categoryColor: task.category?.color ?? "#6366f1",
+        categoryName: task.category?.name ?? null,
+        tags: task.taskTags.map((t) => t.tag.name),
+      },
+    }));
+
+    return reply.send(events);
+  });
+
   // ─── POST /api/tasks ──────────────────────────────────────
   app.post<{
     Body: {
       title: string;
       description?: string;
+      status?: "TODO" | "IN_PROGRESS" | "DONE";
       priority?: "LOW" | "MEDIUM" | "HIGH";
       dueDate?: string;
-      categoryId?: string;  // ← NUOVO
-      tagIds?: string[];    // ← NUOVO
+      categoryId?: string;
+      tagIds?: string[];
     };
   }>("/", async (request, reply) => {
-    const { title, description, priority, dueDate, categoryId, tagIds } =
+    const { title, description, status, priority, dueDate, categoryId, tagIds } =
       request.body;
 
     if (!title || title.trim() === "") {
       return reply.status(400).send({ error: "Il titolo è obbligatorio" });
     }
 
-    // Se categoryId fornito, verifica che appartenga all'utente
     if (categoryId) {
       const cat = await prisma.category.findFirst({
         where: { id: categoryId, userId: request.currentUser.id },
@@ -75,11 +111,11 @@ export async function taskRoutes(app: FastifyInstance) {
       data: {
         title: title.trim(),
         description: description?.trim(),
+        status: status ?? "TODO",
         priority: priority ?? "MEDIUM",
         dueDate: dueDate ? new Date(dueDate) : undefined,
         userId: request.currentUser.id,
         categoryId: categoryId ?? null,
-        // crea le relazioni TaskTag se tagIds forniti
         ...(tagIds && tagIds.length > 0 && {
           taskTags: {
             create: tagIds.map((tagId) => ({ tagId })),
@@ -101,15 +137,15 @@ export async function taskRoutes(app: FastifyInstance) {
     Body: {
       title?: string;
       description?: string;
-      completed?: boolean;
+      status?: "TODO" | "IN_PROGRESS" | "DONE";
       priority?: "LOW" | "MEDIUM" | "HIGH";
-      dueDate?: string;
-      categoryId?: string | null; // ← NUOVO (null = rimuove categoria)
-      tagIds?: string[];           // ← NUOVO (sostituisce tutti i tag)
+      dueDate?: string | null;
+      categoryId?: string | null;
+      tagIds?: string[];
     };
   }>("/:id", async (request, reply) => {
     const { id } = request.params;
-    const { title, description, completed, priority, dueDate, categoryId, tagIds } =
+    const { title, description, status, priority, dueDate, categoryId, tagIds } =
       request.body;
 
     const existing = await prisma.task.findFirst({
@@ -120,7 +156,6 @@ export async function taskRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "Task non trovato" });
     }
 
-    // Se tagIds forniti, sostituiamo tutti i tag (delete + create)
     if (tagIds !== undefined) {
       await prisma.taskTag.deleteMany({ where: { taskId: id } });
     }
@@ -130,11 +165,12 @@ export async function taskRoutes(app: FastifyInstance) {
       data: {
         ...(title !== undefined && { title: title.trim() }),
         ...(description !== undefined && { description: description.trim() }),
-        ...(completed !== undefined && { completed }),
+        ...(status !== undefined && { status }),
         ...(priority !== undefined && { priority }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(dueDate !== undefined && {
+          dueDate: dueDate ? new Date(dueDate) : null,
+        }),
         ...(categoryId !== undefined && { categoryId }),
-        // ricrea i tag se forniti
         ...(tagIds !== undefined && tagIds.length > 0 && {
           taskTags: {
             create: tagIds.map((tagId) => ({ tagId })),

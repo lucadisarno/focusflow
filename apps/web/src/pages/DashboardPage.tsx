@@ -134,6 +134,9 @@ export function DashboardPage() {
                 <Button variant="outline" onClick={() => navigate("/tags")}>
                   🔖 Tag
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/calendar")}>
+                  📅 Calendario
+                </Button>
               </CardContent>
             </Card>
 
@@ -146,10 +149,16 @@ export function DashboardPage() {
                 <CardContent className="space-y-2">
                   {stats.recentTasks.map((task) => (
                     <div key={task.id} className="flex items-center gap-2">
-                      <span className={task.completed ? "text-green-500" : "text-yellow-500"}>
-                        {task.completed ? "✅" : "⏳"}
+                      <span className={
+                        task.status === "DONE"
+                          ? "text-green-500"
+                          : task.status === "IN_PROGRESS"
+                          ? "text-blue-500"
+                          : "text-yellow-500"
+                      }>
+                        {task.status === "DONE" ? "✅" : task.status === "IN_PROGRESS" ? "🔄" : "⏳"}
                       </span>
-                      <span className={`text-sm ${task.completed ? "line-through text-muted-foreground" : ""}`}>
+                      <span className={`text-sm ${task.status === "DONE" ? "line-through text-muted-foreground" : ""}`}>
                         {task.title}
                       </span>
                     </div>

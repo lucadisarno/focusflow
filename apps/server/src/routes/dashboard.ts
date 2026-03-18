@@ -20,8 +20,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
     const [total, completed, pending] = await Promise.all([
       prisma.task.count({ where: { userId } }),
-      prisma.task.count({ where: { userId, completed: true } }),
-      prisma.task.count({ where: { userId, completed: false } }),
+      prisma.task.count({ where: { userId, status: "DONE" } }),
+      prisma.task.count({ where: { userId, status: { in: ["TODO", "IN_PROGRESS"] } } }),
     ]);
 
     // Ultimi 5 task creati
@@ -32,18 +32,18 @@ export async function dashboardRoutes(app: FastifyInstance) {
       select: {
         id: true,
         title: true,
-        completed: true,
+        status: true,
         createdAt: true,
       },
     });
 
-    // ← NUOVO: statistiche per categoria
+    // Statistiche per categoria
     const categories = await prisma.category.findMany({
       where: { userId },
       include: {
         tasks: {
           where: { userId },
-          select: { completed: true },
+          select: { status: true },
         },
       },
       orderBy: { createdAt: "asc" },
@@ -55,11 +55,13 @@ export async function dashboardRoutes(app: FastifyInstance) {
       color: cat.color,
       icon: cat.icon,
       total: cat.tasks.length,
-      completed: cat.tasks.filter((t) => t.completed).length,
+      completed: cat.tasks.filter((t) => t.status === "DONE").length,
       completionRate:
         cat.tasks.length > 0
           ? Math.round(
-              (cat.tasks.filter((t) => t.completed).length / cat.tasks.length) * 100
+              (cat.tasks.filter((t) => t.status === "DONE").length /
+                cat.tasks.length) *
+                100
             )
           : 0,
     }));
@@ -72,7 +74,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
       },
       recentTasks,
-      categoryStats, // ← NUOVO
+      categoryStats,
     });
   });
 }

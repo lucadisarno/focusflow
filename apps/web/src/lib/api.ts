@@ -43,7 +43,7 @@ export interface Task {
   id: string;
   title: string;
   description?: string | null;
-  completed: boolean;
+  status: "TODO" | "IN_PROGRESS" | "DONE"; // ← sostituisce completed
   priority: "LOW" | "MEDIUM" | "HIGH";
   dueDate?: string | null;
   categoryId?: string | null;
@@ -53,17 +53,23 @@ export interface Task {
   updatedAt: string;
 }
 
-export interface DashboardStats {
-  stats: {
-    total: number;
-    completed: number;
-    pending: number;
-    completionRate: number;
+// ─── Calendar Event Type ──────────────────────────────────
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  resource: {
+    status: "TODO" | "IN_PROGRESS" | "DONE";
+    priority: "LOW" | "MEDIUM" | "HIGH";
+    categoryId?: string | null;
+    categoryColor: string;
+    categoryName?: string | null;
+    tags: string[];
   };
-  recentTasks: Pick<Task, "id" | "title" | "completed" | "createdAt">[];
 }
 
-// Aggiungi questo nuovo tipo
 export interface CategoryStat {
   id: string;
   name: string;
@@ -81,8 +87,8 @@ export interface DashboardStats {
     pending: number;
     completionRate: number;
   };
-  recentTasks: Pick<Task, "id" | "title" | "completed" | "createdAt">[];
-  categoryStats: CategoryStat[]; // ← NUOVO
+  recentTasks: Pick<Task, "id" | "title" | "status" | "createdAt">[];
+  categoryStats: CategoryStat[];
 }
 
 // ─── Task API ─────────────────────────────────────────────
@@ -98,6 +104,7 @@ export const taskApi = {
   create: (data: {
     title: string;
     description?: string;
+    status?: "TODO" | "IN_PROGRESS" | "DONE";
     priority?: "LOW" | "MEDIUM" | "HIGH";
     dueDate?: string;
     categoryId?: string;
@@ -111,9 +118,9 @@ export const taskApi = {
   update: (id: string, data: {
     title?: string;
     description?: string;
-    completed?: boolean;
+    status?: "TODO" | "IN_PROGRESS" | "DONE";
     priority?: "LOW" | "MEDIUM" | "HIGH";
-    dueDate?: string;
+    dueDate?: string | null;
     categoryId?: string | null;
     tagIds?: string[];
   }) =>
@@ -126,6 +133,15 @@ export const taskApi = {
     apiFetch<void>(`/api/tasks/${id}`, {
       method: "DELETE",
     }),
+
+  // ← NUOVO: endpoint calendario
+  getCalendarEvents: (start: Date, end: Date) => {
+    const query = new URLSearchParams({
+      start: start.toISOString(),
+      end: end.toISOString(),
+    });
+    return apiFetch<CalendarEvent[]>(`/api/tasks/calendar?${query}`);
+  },
 };
 
 // ─── Dashboard API ────────────────────────────────────────
@@ -133,3 +149,4 @@ export const dashboardApi = {
   getStats: () =>
     apiFetch<DashboardStats>("/api/dashboard"),
 };
+
