@@ -75,22 +75,27 @@ export async function taskRoutes(app: FastifyInstance) {
     return reply.send(updated);
   });
 
-  // ─── DELETE /api/tasks/:id ────────────────────────────────
-  app.delete<{
-    Params: { id: string };
-  }>("/:id", async (request, reply) => {
-    const { id } = request.params;
+// ─── DELETE /api/tasks/:id ────────────────────────────────
+app.delete<{
+  Params: { id: string };
+}>("/:id", async (request, reply) => {
+  const { id } = request.params;
 
-    const existing = await prisma.task.findFirst({
-      where: { id, userId: request.currentUser.id },
-    });
+  console.log("DELETE request for id:", id);
+  console.log("currentUser:", request.currentUser?.id);
 
-    if (!existing) {
-      return reply.status(404).send({ error: "Task non trovato" });
-    }
-
-    await prisma.task.delete({ where: { id } });
-
-    return reply.status(204).send();
+  const existing = await prisma.task.findFirst({
+    where: { id, userId: request.currentUser.id },
   });
+
+  console.log("existing task:", existing);
+
+  if (!existing) {
+    return reply.status(404).send({ error: "Task non trovato" });
+  }
+
+  await prisma.task.delete({ where: { id } });
+
+  return reply.status(204).send();
+});
 }
