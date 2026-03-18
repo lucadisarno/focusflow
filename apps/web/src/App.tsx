@@ -3,6 +3,8 @@ import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { TaskPage } from "@/pages/TaskPage";
+import CategoriesPage from "@/pages/CategoriesPage";
+import { Layout } from "@/components/Layout";
 import { useSession } from "@/lib/auth-client";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -20,7 +22,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return <Layout>{children}</Layout>;
 }
 
 export default function App() {
@@ -42,6 +44,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <TaskPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/categories"
+          element={
+            <ProtectedRoute>
+              <CategoriesPage />
             </ProtectedRoute>
           }
         />

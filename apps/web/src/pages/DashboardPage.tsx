@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth-client";
 import { dashboardApi, type DashboardStats } from "@/lib/api";
 
 export function DashboardPage() {
@@ -18,28 +18,19 @@ export function DashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
-  };
-
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">FocusFlow 🎯</h1>
-            <p className="text-muted-foreground mt-1">
-              Ciao, <span className="font-medium text-foreground">
-                {session?.user.name ?? session?.user.email}
-              </span>!
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            Esci
-          </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Ciao,{" "}
+            <span className="font-medium text-foreground">
+              {session?.user.name ?? session?.user.email}
+            </span>!
+          </p>
         </div>
 
         {/* Statistiche */}
@@ -98,6 +89,9 @@ export function DashboardPage() {
           <CardContent className="flex gap-3">
             <Button onClick={() => navigate("/tasks")}>
               📝 Gestisci Task
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/categories")}>
+              🏷️ Gestisci Categorie
             </Button>
           </CardContent>
         </Card>
