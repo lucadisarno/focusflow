@@ -23,11 +23,32 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ─── Types ────────────────────────────────────────────────
+export interface TaskTag {
+  tagId: string;
+  tag: {
+    id: string;
+    name: string;
+    color: string;
+  };
+}
+
+export interface TaskCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description?: string | null;
   completed: boolean;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  dueDate?: string | null;
+  categoryId?: string | null;
+  category?: TaskCategory | null;
+  taskTags: TaskTag[];
   createdAt: string;
   updatedAt: string;
 }
@@ -44,16 +65,36 @@ export interface DashboardStats {
 
 // ─── Task API ─────────────────────────────────────────────
 export const taskApi = {
-  getAll: () =>
-    apiFetch<Task[]>("/api/tasks"),
+  getAll: (params?: { categoryId?: string; tagId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.categoryId) query.set("categoryId", params.categoryId);
+    if (params?.tagId) query.set("tagId", params.tagId);
+    const qs = query.toString();
+    return apiFetch<Task[]>(`/api/tasks${qs ? `?${qs}` : ""}`);
+  },
 
-  create: (data: { title: string; description?: string }) =>
+  create: (data: {
+    title: string;
+    description?: string;
+    priority?: "LOW" | "MEDIUM" | "HIGH";
+    dueDate?: string;
+    categoryId?: string;
+    tagIds?: string[];
+  }) =>
     apiFetch<Task>("/api/tasks", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: { title?: string; description?: string; completed?: boolean }) =>
+  update: (id: string, data: {
+    title?: string;
+    description?: string;
+    completed?: boolean;
+    priority?: "LOW" | "MEDIUM" | "HIGH";
+    dueDate?: string;
+    categoryId?: string | null;
+    tagIds?: string[];
+  }) =>
     apiFetch<Task>(`/api/tasks/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),

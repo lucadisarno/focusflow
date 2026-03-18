@@ -1,59 +1,153 @@
 import { useEffect, useState } from "react";
 import { taskApi, type Task } from "@/lib/api";
+import { getCategories, type Category } from "@/api/categories";
+import { getTags, type Tag } from "@/api/tags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ICON_OPTIONS } from "@/components/ui/icon-picker";
+
+// Componente icona dinamica
+function CategoryIcon({ name, color, size = 14 }: { name: string; color: string; size?: number }) {
+  const IconComponent = ICON_OPTIONS.find((i) => i.name === name)?.icon;
+  if (!IconComponent) return null;
+  return <IconComponent size={size} style={{ color }} />;
+}
+
+// Componente TagMultiSelect semplice
+function TagMultiSelect({
+  tags,
+  selectedIds,
+  onChange,
+}: {
+  tags: Tag[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  function toggle(id: string) {
+    if (selectedIds.includes(id)) {
+      onChange(selectedIds.filter((i) => i !== id));
+    } else {
+      onChange([...selectedIds, id]);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tags.map((tag) => {
+        const selected = selectedIds.includes(tag.id);
+        return (
+          <button
+            key={tag.id}
+            type="button"
+            onClick={() => toggle(tag.id)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full border-2 text-xs font-medium transition-all"
+            style={{
+              borderColor: tag.color,
+              backgroundColor: selected ? tag.color : `${tag.color}15`,
+              color: selected ? "white" : tag.color,
+            }}
+          >
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: selected ? "white" : tag.color }}
+            />
+            {tag.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function TaskPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const navigate = useNavigate();
+  // Filtri
+  const [filterCategoryId, setFilterCategoryId] = useState<string>("");
 
-  // ─── Carica i task ────────────────────────────────────────
-  const loadTasks = async () => {
+  useEffect(() => {
+    Promise.all([loadTasks(), loadCategories(), loadTags()]);
+  }, []);
+
+  const loadTasks = async (catId?: string) => {
     try {
-      const data = await taskApi.getAll();
+      const data = await taskApi.getAll(catId ? { categoryId: catId } : undefined);
       setTasks(data);
-    } catch (err) {
+    } catch {
       setError("Errore nel caricamento dei task");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
+  const loadCategories = async () => {
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch {}
+  };
 
-  // ─── Crea task ────────────────────────────────────────────
+  const loadTags = async () => {
+    try {
+      const data = await getTags();
+      setTags(data);
+    } catch {}
+  };
+
+  const handleFilterCategory = async (value: string | null) => {
+  setFilterCategoryId(value ?? "");
+  setLoading(true);
+  await loadTasks(value || undefined);
+};
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-
     setSubmitting(true);
     try {
-      const newTask = await taskApi.create({ title, description });
+      const newTask = await taskApi.create({
+        title,
+        description,
+        priority,
+        categoryId: categoryId || undefined,
+        tagIds: selectedTagIds,
+      });
       setTasks((prev) => [newTask, ...prev]);
       setTitle("");
       setDescription("");
-    } catch (err) {
+      setPriority("MEDIUM");
+      setCategoryId("");
+      setSelectedTagIds([]);
+    } catch {
       setError("Errore nella creazione del task");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ─── Toggle completato ────────────────────────────────────
   const handleToggle = async (task: Task) => {
     try {
       const updated = await taskApi.update(task.id, { completed: !task.completed });
@@ -63,7 +157,6 @@ export function TaskPage() {
     }
   };
 
-  // ─── Elimina task ─────────────────────────────────────────
   const handleDelete = async (id: string) => {
     try {
       await taskApi.delete(id);
@@ -73,93 +166,225 @@ export function TaskPage() {
     }
   };
 
+  const priorityConfig = {
+    LOW: { label: "Bassa", className: "bg-slate-100 text-slate-600" },
+    MEDIUM: { label: "Media", className: "bg-yellow-100 text-yellow-700" },
+    HIGH: { label: "Alta", className: "bg-red-100 text-red-700" },
+  };
+
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">I miei Task 📝</h1>
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
-            ← Dashboard
-          </Button>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold">I miei Task</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Gestisci e organizza i tuoi task
+        </p>
+      </div>
+
+      {/* Form creazione */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Nuovo Task</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <Input
+              placeholder="Titolo del task..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={submitting}
+            />
+            <Textarea
+              placeholder="Descrizione (opzionale)..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={submitting}
+              rows={2}
+            />
+
+            {/* Priorità + Categoria */}
+            <div className="flex gap-2">
+              <Select value={priority} onValueChange={(v) => setPriority(v as any)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Priorità" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">🟢 Bassa</SelectItem>
+                  <SelectItem value="MEDIUM">🟡 Media</SelectItem>
+                  <SelectItem value="HIGH">🔴 Alta</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={categoryId} onValueChange={(v) => setCategoryId(v)}>
+  <SelectTrigger className="flex-1">
+    <SelectValue>
+      {categoryId
+        ? (() => {
+            const cat = categories.find((c) => c.id === categoryId);
+            return cat ? (
+              <div className="flex items-center gap-2">
+                <CategoryIcon name={cat.icon} color={cat.color} />
+                {cat.name}
+              </div>
+            ) : "Categoria (opzionale)";
+          })()
+        : "Categoria (opzionale)"}
+    </SelectValue>
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="">Nessuna categoria</SelectItem>
+    {categories.map((cat) => (
+      <SelectItem key={cat.id} value={cat.id}>
+        <div className="flex items-center gap-2">
+          <CategoryIcon name={cat.icon} color={cat.color} />
+          {cat.name}
         </div>
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+            </div>
 
-        {/* Form creazione */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Nuovo Task</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="space-y-3">
-              <Input
-                placeholder="Titolo del task..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                disabled={submitting}
-              />
-              <Textarea
-                placeholder="Descrizione (opzionale)..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={submitting}
-                rows={2}
-              />
-              <Button type="submit" disabled={submitting || !title.trim()}>
-                {submitting ? "Creando..." : "Crea Task"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            {/* Tag multiselect */}
+            {tags.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Tag</p>
+                <TagMultiSelect
+                  tags={tags}
+                  selectedIds={selectedTagIds}
+                  onChange={setSelectedTagIds}
+                />
+              </div>
+            )}
 
-        {/* Errore */}
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+            <Button type="submit" disabled={submitting || !title.trim()}>
+              {submitting ? "Creando..." : "Crea Task"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        {/* Lista task */}
-        {loading ? (
-          <p className="text-muted-foreground text-center">Caricamento...</p>
-        ) : tasks.length === 0 ? (
-          <p className="text-muted-foreground text-center">
-            Nessun task ancora. Creane uno! 🚀
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {tasks.map((task) => (
-              <Card key={task.id} className={task.completed ? "opacity-60" : ""}>
-                <CardContent className="pt-4">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      checked={task.completed}
-                      onCheckedChange={() => handleToggle(task)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1 min-w-0">
+      {/* Filtro per categoria */}
+      {categories.length > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Filtra:</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleFilterCategory("")}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                filterCategoryId === ""
+                  ? "bg-foreground text-background border-foreground"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              Tutti
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => handleFilterCategory(cat.id)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border-2 transition-all"
+                style={{
+                  borderColor: cat.color,
+                  backgroundColor:
+                    filterCategoryId === cat.id ? cat.color : `${cat.color}15`,
+                  color: filterCategoryId === cat.id ? "white" : cat.color,
+                }}
+              >
+                <CategoryIcon
+                  name={cat.icon}
+                  color={filterCategoryId === cat.id ? "white" : cat.color}
+                />
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Errore */}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {/* Lista task */}
+      {loading ? (
+        <p className="text-muted-foreground text-center">Caricamento...</p>
+      ) : tasks.length === 0 ? (
+        <p className="text-muted-foreground text-center">
+          Nessun task ancora. Creane uno! 🚀
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {tasks.map((task) => (
+            <Card key={task.id} className={task.completed ? "opacity-60" : ""}>
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={task.completed}
+                    onCheckedChange={() => handleToggle(task)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className={`font-medium ${task.completed ? "line-through" : ""}`}>
                         {task.title}
                       </p>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {task.description}
-                        </p>
-                      )}
+                      {/* Badge priorità */}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityConfig[task.priority].className}`}>
+                        {priorityConfig[task.priority].label}
+                      </span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(task.id)}
-                      className="text-destructive hover:text-destructive shrink-0"
-                    >
-                      Elimina
-                    </Button>
+
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                    )}
+
+                    {/* Categoria */}
+                    {task.category && (
+                      <div
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium"
+                        style={{
+                          backgroundColor: `${task.category.color}20`,
+                          color: task.category.color,
+                        }}
+                      >
+                        <CategoryIcon name={task.category.icon} color={task.category.color} size={12} />
+                        {task.category.name}
+                      </div>
+                    )}
+
+                    {/* Tag */}
+                    {task.taskTags && task.taskTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {task.taskTags.map(({ tag }) => (
+                          <Badge
+                            key={tag.id}
+                            variant="outline"
+                            className="text-xs px-2 py-0"
+                            style={{ borderColor: tag.color, color: tag.color }}
+                          >
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(task.id)}
+                    className="text-destructive hover:text-destructive shrink-0"
+                  >
+                    Elimina
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
