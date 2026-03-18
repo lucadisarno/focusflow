@@ -4,6 +4,7 @@ import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { TaskPage } from "@/pages/TaskPage";
 import CategoriesPage from "@/pages/CategoriesPage";
+import TagsPage from "@/pages/TagsPage";
 import { Layout } from "@/components/Layout";
 import { useSession } from "@/lib/auth-client";
 
@@ -52,6 +53,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CategoriesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tags"
+          element={
+            <ProtectedRoute>
+              <TagsPage />
             </ProtectedRoute>
           }
         />
