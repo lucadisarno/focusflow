@@ -5,8 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider   = "postgresql"
-  extensions = [pg_trgm]
+  provider = "postgresql"
 }
 
 // ─── USER ────────────────────────────────────────────────────────────────────

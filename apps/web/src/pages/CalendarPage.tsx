@@ -104,12 +104,15 @@ export function CalendarPage() {
       const end   = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0);
       const data  = await taskApi.getCalendarEvents(start, end);
 
-      const parsed = data.map((e) => ({
-        ...e,
-        start: new Date(e.start),
-        end:   new Date(e.end),
-      }));
-      setEvents(parsed);
+      // DOPO ✅ — l'API restituisce stringhe, le convertiamo in Date come prima
+// ma ora il tipo lo aspetta, quindi non serve il cast
+const parsed: CalendarEvent[] = data.map((e) => ({
+  ...e,
+  start: new Date(e.start as unknown as string),
+  end:   new Date(e.end as unknown as string),
+}));
+setEvents(parsed);
+
     } catch (err) {
       console.error("Errore caricamento eventi calendario", err);
     } finally {
@@ -241,9 +244,9 @@ export function CalendarPage() {
       <Card className="p-4 overflow-hidden">
         {selectedEvent && (
           <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-            <PopoverTrigger asChild>
+             <PopoverTrigger>
               <span className="hidden" />
-            </PopoverTrigger>
+             </PopoverTrigger>
             <PopoverContent className="w-auto p-4" side="top">
               <EventPopover event={selectedEvent} />
             </PopoverContent>

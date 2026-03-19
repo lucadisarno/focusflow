@@ -83,6 +83,7 @@ interface Filters {
   dateTo: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_FILTERS: Filters = {
   status: "", priority: "", categoryId: "",
   tagId: "", dateFrom: "", dateTo: "",
@@ -108,12 +109,12 @@ export function TaskPage() {
 
   // ─── Filtri da URL params ────────────────────────────────
   const filters: Filters = {
-    status:     searchParams.get("status")     ?? "",
-    priority:   searchParams.get("priority")   ?? "",
-    categoryId: searchParams.get("categoryId") ?? "",
-    tagId:      searchParams.get("tagId")      ?? "",
-    dateFrom:   searchParams.get("dateFrom")   ?? "",
-    dateTo:     searchParams.get("dateTo")     ?? "",
+    status:     String(searchParams.get("status")     ?? ""),
+    priority:   String(searchParams.get("priority")   ?? ""),
+    categoryId: String(searchParams.get("categoryId") ?? ""),
+    tagId:      String(searchParams.get("tagId")      ?? ""),
+    dateFrom:   String(searchParams.get("dateFrom")   ?? ""),
+    dateTo:     String(searchParams.get("dateTo")     ?? ""),
   };
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -238,7 +239,10 @@ export function TaskPage() {
           <CardContent className="space-y-3">
             {/* Riga 1: Status + Priority */}
             <div className="grid grid-cols-2 gap-2">
-              <Select value={filters.status} onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : v)}>
+              <Select
+                value={filters.status}
+                onValueChange={(v: string | null) => updateFilter("status", (v ?? "") === "ALL" ? "" : (v ?? ""))}
+              >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Tutti gli status" />
                 </SelectTrigger>
@@ -250,7 +254,10 @@ export function TaskPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={filters.priority} onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : v)}>
+              <Select
+                value={filters.priority}
+                onValueChange={(v: string | null) => updateFilter("priority", (v ?? "") === "ALL" ? "" : (v ?? ""))}
+              >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Tutte le priorità" />
                 </SelectTrigger>
@@ -265,7 +272,10 @@ export function TaskPage() {
 
             {/* Riga 2: Categoria + Tag */}
             <div className="grid grid-cols-2 gap-2">
-              <Select value={filters.categoryId} onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : v)}>
+              <Select
+                value={filters.categoryId}
+                onValueChange={(v: string | null) => updateFilter("categoryId", (v ?? "") === "ALL" ? "" : (v ?? ""))}
+              >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Tutte le categorie" />
                 </SelectTrigger>
@@ -282,7 +292,10 @@ export function TaskPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={filters.tagId} onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : v)}>
+              <Select
+                value={filters.tagId}
+                onValueChange={(v: string | null) => updateFilter("tagId", (v ?? "") === "ALL" ? "" : (v ?? ""))}
+              >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Tutti i tag" />
                 </SelectTrigger>
@@ -327,7 +340,7 @@ export function TaskPage() {
             <Textarea placeholder="Descrizione (opzionale)..." value={description}
               onChange={(e) => setDescription(e.target.value)} disabled={submitting} rows={2} />
             <div className="flex gap-2">
-              <Select value={priority} onValueChange={(v) => setPriority(v as any)}>
+              <Select value={priority} onValueChange={(v) => setPriority(v as "LOW" | "MEDIUM" | "HIGH")}>
                 <SelectTrigger className="w-32"><SelectValue placeholder="Priorità" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="LOW">🟢 Bassa</SelectItem>
@@ -335,7 +348,7 @@ export function TaskPage() {
                   <SelectItem value="HIGH">🔴 Alta</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={categoryId} onValueChange={(v) => setCategoryId(v)}>
+              <Select value={categoryId} onValueChange={(v: string | null) => setCategoryId(v ?? "")}>
                 <SelectTrigger className="flex-1">
                   <SelectValue>
                     {categoryId ? (() => {

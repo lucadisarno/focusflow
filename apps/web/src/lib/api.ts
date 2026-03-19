@@ -57,8 +57,8 @@ export interface Task {
 export interface CalendarEvent {
   id: string;
   title: string;
-  start: string;
-  end: string;
+  start: Date;
+  end: Date;
   allDay: boolean;
   resource: {
     status: "TODO" | "IN_PROGRESS" | "DONE";
