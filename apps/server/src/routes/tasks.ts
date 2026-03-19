@@ -108,21 +108,22 @@ export async function taskRoutes(app: FastifyInstance) {
       orderBy: { dueDate: "asc" },
     });
 
-    const events = tasks.map((task) => ({
-      id: task.id,
-      title: task.title,
-      start: task.dueDate!,
-      end: task.dueDate!,
-      allDay: true,
-      resource: {
-        status: task.status,
-        priority: task.priority,
-        categoryId: task.categoryId,
-        categoryColor: task.category?.color ?? "#6366f1",
-        categoryName: task.category?.name ?? null,
-        tags: task.tags.map((t) => t.tag.name),
-      },
-    }));
+
+const events = tasks.map((task: typeof tasks[number]) => ({
+  id: task.id,
+  title: task.title,
+  start: task.dueDate!,
+  end: task.dueDate!,
+  allDay: true,
+  resource: {
+    status: task.status,
+    priority: task.priority,
+    categoryId: task.categoryId,
+    categoryColor: task.category?.color ?? "#6366f1",
+    categoryName: task.category?.name ?? null,
+    tags: task.tags.map((t: { tag: { name: string } }) => t.tag.name),
+  },
+}));
 
     return reply.send(events);
   });

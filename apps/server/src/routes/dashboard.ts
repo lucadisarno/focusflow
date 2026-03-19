@@ -37,34 +37,34 @@ export async function dashboardRoutes(app: FastifyInstance) {
       },
     });
 
-    // Statistiche per categoria
-    const categories = await prisma.category.findMany({
+// Statistiche per categoria
+const categories = await prisma.category.findMany({
+  where: { userId },
+  include: {
+    tasks: {
       where: { userId },
-      include: {
-        tasks: {
-          where: { userId },
-          select: { status: true },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+      select: { status: true },
+    },
+  },
+  orderBy: { createdAt: "asc" },
+});
 
-    const categoryStats = categories.map((cat) => ({
-      id: cat.id,
-      name: cat.name,
-      color: cat.color,
-      icon: cat.icon,
-      total: cat.tasks.length,
-      completed: cat.tasks.filter((t) => t.status === "DONE").length,
-      completionRate:
-        cat.tasks.length > 0
-          ? Math.round(
-              (cat.tasks.filter((t) => t.status === "DONE").length /
-                cat.tasks.length) *
-                100
-            )
-          : 0,
-    }));
+const categoryStats = categories.map((cat: typeof categories[number]) => ({
+  id: cat.id,
+  name: cat.name,
+  color: cat.color,
+  icon: cat.icon,
+  total: cat.tasks.length,
+  completed: cat.tasks.filter((t: { status: string }) => t.status === "DONE").length,
+  completionRate:
+    cat.tasks.length > 0
+      ? Math.round(
+          (cat.tasks.filter((t: { status: string }) => t.status === "DONE").length /
+            cat.tasks.length) *
+            100
+        )
+      : 0,
+}));
 
     return reply.send({
       stats: {
