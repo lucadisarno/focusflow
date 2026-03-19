@@ -4,6 +4,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 function createPrismaClient() {
   const connectionString = process.env["DATABASE_URL"]!;
   const adapter = new PrismaNeon({ connectionString });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new PrismaClient({ adapter } as any);
 }
 
@@ -18,4 +19,3 @@ if (process.env["NODE_ENV"] !== "production") {
 }
 
 export * from "@prisma/client";
-export type { PrismaClient };
