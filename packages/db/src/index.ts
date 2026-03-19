@@ -1,11 +1,14 @@
-import { PrismaClient } from "@prisma/client";
+// @ts-ignore
+import Prisma from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { PrismaClient } = Prisma as any;
 
 function createPrismaClient() {
   const connectionString = process.env["DATABASE_URL"]!;
   const adapter = new PrismaNeon({ connectionString });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return new PrismaClient({ adapter } as any);
+  return new PrismaClient({ adapter });
 }
 
 const globalForPrisma = globalThis as unknown as {
