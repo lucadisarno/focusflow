@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Calendar, Views, type View } from "react-big-calendar";
+import withDragAndDrop, {
+  type EventInteractionArgs,
+} from "react-big-calendar/lib/addons/dragAndDrop";
 import { useNavigate } from "react-router-dom";
 import { taskApi, type CalendarEvent } from "@/lib/api";
 import { localizer } from "@/lib/calendar";
@@ -12,7 +15,12 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 
-// ─── Configurazione label status ──────────────────────────
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
+
+// ─── Calendario con DnD ───────────────────────────────────
+const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar);
+
+// ─── Config status / priority ─────────────────────────────
 const statusConfig = {
   TODO:        { label: "Da fare",    emoji: "⏳" },
   IN_PROGRESS: { label: "In corso",   emoji: "🔄" },
@@ -25,7 +33,7 @@ const priorityConfig = {
   HIGH:   { label: "Alta",   className: "bg-red-100 text-red-700" },
 };
 
-// ─── Componente mini-preview evento ───────────────────────
+// ─── Popover dettagli evento ──────────────────────────────
 function EventPopover({ event }: { event: CalendarEvent }) {
   const navigate = useNavigate();
   const { resource } = event;
@@ -79,7 +87,7 @@ function EventPopover({ event }: { event: CalendarEvent }) {
   );
 }
 
-// ─── Componente principale ─────────────────────────────────
+// ─── Componente principale ────────────────────────────────
 export function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,8 +95,8 @@ export function CalendarPage() {
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
-  // Calcola start/end in base alla vista corrente
   const fetchEvents = useCallback(async (currentDate: Date) => {
     setLoading(true);
     try {
@@ -96,7 +104,6 @@ export function CalendarPage() {
       const end   = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0);
       const data  = await taskApi.getCalendarEvents(start, end);
 
-      // Converti le stringhe in oggetti Date
       const parsed = data.map((e) => ({
         ...e,
         start: new Date(e.start),
@@ -114,7 +121,7 @@ export function CalendarPage() {
     fetchEvents(date);
   }, [date, fetchEvents]);
 
-  // Color coding per categoria
+  // ─── Color coding per categoria ───────────────────────────
   const eventPropGetter = useCallback((event: CalendarEvent) => {
     const color = event.resource?.categoryColor ?? "#6366f1";
     const isDone = event.resource?.status === "DONE";
@@ -128,14 +135,69 @@ export function CalendarPage() {
         padding: "2px 6px",
         textDecoration: isDone ? "line-through" : "none",
         opacity: isDone ? 0.7 : 1,
+        cursor: "grab",
       },
     };
   }, []);
 
+  // ─── Click su evento → apri popover ──────────────────────
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
+    if (dragging) return; // non aprire popover durante il drag
     setSelectedEvent(event);
     setPopoverOpen(true);
-  }, []);
+  }, [dragging]);
+
+  // ─── Drag & drop: aggiorna dueDate sul backend ────────────
+  const handleEventDrop = useCallback(
+    async ({ event, start }: EventInteractionArgs<CalendarEvent>) => {
+      setDragging(false);
+      const newDate = start instanceof Date ? start : new Date(start);
+
+      // Aggiorna ottimisticamente la UI
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === event.id
+            ? { ...e, start: newDate, end: newDate }
+            : e
+        )
+      );
+
+      // Chiama il backend
+      try {
+        await taskApi.update(event.id, {
+          dueDate: newDate.toISOString(),
+        });
+      } catch (err) {
+        console.error("Errore aggiornamento data task", err);
+        // Rollback in caso di errore
+        fetchEvents(date);
+      }
+    },
+    [date, fetchEvents]
+  );
+
+  // ─── Resize evento (stessa logica del drop) ───────────────
+  const handleEventResize = useCallback(
+    async ({ event, start }: EventInteractionArgs<CalendarEvent>) => {
+      const newDate = start instanceof Date ? start : new Date(start);
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === event.id
+            ? { ...e, start: newDate, end: newDate }
+            : e
+        )
+      );
+      try {
+        await taskApi.update(event.id, {
+          dueDate: newDate.toISOString(),
+        });
+      } catch (err) {
+        console.error("Errore resize task", err);
+        fetchEvents(date);
+      }
+    },
+    [date, fetchEvents]
+  );
 
   const handleNavigate = useCallback((newDate: Date) => {
     setDate(newDate);
@@ -152,7 +214,6 @@ export function CalendarPage() {
             Visualizza i tuoi task con scadenza
           </p>
         </div>
-
         {loading && (
           <span className="text-sm text-muted-foreground animate-pulse">
             Caricamento...
@@ -170,14 +231,14 @@ export function CalendarPage() {
           <span className="w-3 h-3 rounded-sm bg-gray-200 border-l-2 border-gray-400 inline-block" />
           Completati
         </span>
+        <span>⏳ Da fare &nbsp; 🔄 In corso &nbsp; ✅ Completato</span>
         <span className="flex items-center gap-1.5">
-          ⏳ Da fare &nbsp; 🔄 In corso &nbsp; ✅ Completato
+          🖱️ Trascina un task per cambiare la scadenza
         </span>
       </div>
 
       {/* Calendario */}
       <Card className="p-4 overflow-hidden">
-        {/* Popover evento selezionato */}
         {selectedEvent && (
           <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
@@ -189,7 +250,7 @@ export function CalendarPage() {
           </Popover>
         )}
 
-        <Calendar
+        <DnDCalendar
           localizer={localizer}
           events={events}
           view={view}
@@ -197,20 +258,24 @@ export function CalendarPage() {
           onView={setView}
           onNavigate={handleNavigate}
           onSelectEvent={handleSelectEvent}
+          onEventDrop={handleEventDrop}
+          onEventResize={handleEventResize}
+          onDragStart={() => setDragging(true)}
           eventPropGetter={eventPropGetter}
+          resizable
           style={{ height: 600 }}
           messages={{
-            next:      "Avanti",
-            previous:  "Indietro",
-            today:     "Oggi",
-            month:     "Mese",
-            week:      "Settimana",
-            day:       "Giorno",
-            agenda:    "Agenda",
-            date:      "Data",
-            time:      "Ora",
-            event:     "Evento",
-            noEventsInRange: "Nessun task con scadenza in questo periodo.",
+            next:             "Avanti",
+            previous:         "Indietro",
+            today:            "Oggi",
+            month:            "Mese",
+            week:             "Settimana",
+            day:              "Giorno",
+            agenda:           "Agenda",
+            date:             "Data",
+            time:             "Ora",
+            event:            "Evento",
+            noEventsInRange:  "Nessun task con scadenza in questo periodo.",
           }}
           formats={{
             monthHeaderFormat: (date) =>
@@ -223,9 +288,8 @@ export function CalendarPage() {
         />
       </Card>
 
-      {/* Tip */}
       <p className="text-xs text-muted-foreground text-center">
-        💡 Clicca su un task nel calendario per vedere i dettagli. Aggiungi una scadenza ai task dalla pagina Task.
+        💡 Clicca su un task per i dettagli. Trascinalo su un altro giorno per cambiare la scadenza.
       </p>
     </div>
   );
