@@ -1,8 +1,18 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTheme } from "next-themes";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, CheckSquare, FolderOpen, Tags, CalendarDays, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  CheckSquare,
+  FolderOpen,
+  Tags,
+  CalendarDays,
+  LogOut,
+  Sun,
+  Moon,
+} from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard",  path: "/dashboard",  icon: LayoutDashboard },
@@ -15,10 +25,15 @@ const NAV_ITEMS = [
 export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -26,6 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Navbar */}
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+
           {/* Logo */}
           <span className="font-bold text-lg">FocusFlow 🎯</span>
 
@@ -49,16 +65,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          {/* Logout */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            className="gap-2 text-muted-foreground"
-          >
-            <LogOut size={15} />
-            Esci
-          </Button>
+          {/* Destra: toggle tema + logout */}
+          <div className="flex items-center gap-1">
+            {/* Toggle dark/light */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="text-muted-foreground"
+              title={theme === "dark" ? "Passa al tema chiaro" : "Passa al tema scuro"}
+            >
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            </Button>
+
+            {/* Logout */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="gap-2 text-muted-foreground"
+            >
+              <LogOut size={15} />
+              Esci
+            </Button>
+          </div>
+
         </div>
       </header>
 
