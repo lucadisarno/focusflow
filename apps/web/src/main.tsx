@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@/index.css";
 import App from "@/App";
 import 'react-big-calendar/lib/css/react-big-calendar.css'
+import '@/styles/calendar.css'
 import './index.css'  
 
 createRoot(document.getElementById("root")!).render(
