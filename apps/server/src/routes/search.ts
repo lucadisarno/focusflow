@@ -43,7 +43,7 @@ export async function searchRoutes(app: FastifyInstance) {
       }
     } catch (err) {
       // Redis non disponibile → continuiamo senza cache
-      app.log.warn("Redis unavailable, skipping cache:", err);
+      app.log.warn({ err }, "Redis unavailable, skipping cache");
     }
 
     // ─── Cache MISS — query al DB ──────────────────────────
@@ -100,7 +100,7 @@ export async function searchRoutes(app: FastifyInstance) {
     try {
       await redis.set(cacheKey, result, { ex: CACHE_TTL.SEARCH });
     } catch (err) {
-      app.log.warn("Redis set failed:", err);
+      app.log.warn({ err }, "Redis set failed");
     }
 
     return reply
