@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  provider        = "prisma-client-js"
+  output          = "../node_modules/.prisma/client"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [pg_trgm]
 }
 
 // ─── USER ────────────────────────────────────────────────────────────────────
@@ -88,6 +90,8 @@ model Category {
   tasks Task[]
 
   @@unique([name, userId])
+  @@index([userId])
+  @@index([name])
   @@map("categories")
 }
 
@@ -105,6 +109,8 @@ model Tag {
   taskTags TaskTag[]
 
   @@unique([name, userId])
+  @@index([userId])
+  @@index([name])
   @@map("tags")
 }
 
@@ -122,10 +128,18 @@ model Task {
   userId      String
   categoryId  String?
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category      Category?     @relation(fields: [categoryId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category?      @relation(fields: [categoryId], references: [id])
   tags          TaskTag[]
-  focusSessions FocusSession[] // ← aggiungi questa riga
+  focusSessions FocusSession[]
+
+  // ─── Indici per search & filtri ───────────────────────────────
+  @@index([userId])                        // query per utente
+  @@index([userId, status])               // filtro status
+  @@index([userId, priority])             // filtro priority
+  @@index([userId, categoryId])           // filtro categoria
+  @@index([userId, dueDate])              // filtro date range
+  @@index([userId, status, priority])     // filtro combinato
   @@map("tasks")
 }
 

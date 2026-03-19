@@ -5,6 +5,7 @@ import { taskRoutes } from "./routes/tasks.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { categoriesRoutes } from "./routes/categories.js";
 import { tagsRoutes } from "./routes/tags.js";
+import { searchRoutes } from "./routes/search.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -30,6 +31,7 @@ export function buildApp() {
   app.register(dashboardRoutes, { prefix: "/api/dashboard" });
   app.register(categoriesRoutes, { prefix: "/api/categories" });
   app.register(tagsRoutes, { prefix: "/api/tags" });
+  app.register(searchRoutes, { prefix: "/api/search" });
 
   return app;
 }

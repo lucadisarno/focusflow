@@ -16,25 +16,73 @@ export async function taskRoutes(app: FastifyInstance) {
 
   // ─── GET /api/tasks ───────────────────────────────────────
   app.get<{
-    Querystring: { categoryId?: string; tagId?: string };
-  }>("/", async (request, reply) => {
-    const { categoryId, tagId } = request.query;
+  Querystring: {
+    categoryId?: string;
+    tagId?: string;
+    status?: string;
+    priority?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  };
+}>("/", async (request, reply) => {
+  const {
+    categoryId,
+    tagId,
+    status,
+    priority,
+    dateFrom,
+    dateTo,
+    search,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = request.query;
 
-    const tasks = await prisma.task.findMany({
-      where: {
-        userId: request.currentUser.id,
-        ...(categoryId && { categoryId }),
-        ...(tagId && { tags: { some: { tagId } } }),
-      },
-      include: {
-        category: true,
-        tags: { include: { tag: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+  const userId = request.currentUser.id;
 
-    return reply.send(tasks);
+  // ─── Costruzione filtri dinamici ──────────────────────────
+  const where: any = { userId };
+
+  if (categoryId)  where.categoryId = categoryId;
+  if (status)      where.status = status;
+  if (priority)    where.priority = priority;
+
+  if (tagId) {
+    where.tags = { some: { tagId } };
+  }
+
+  if (dateFrom || dateTo) {
+    where.dueDate = {
+      ...(dateFrom && { gte: new Date(dateFrom) }),
+      ...(dateTo   && { lte: new Date(dateTo) }),
+    };
+  }
+
+  if (search && search.trim().length >= 2) {
+    where.OR = [
+      { title:       { contains: search.trim(), mode: "insensitive" } },
+      { description: { contains: search.trim(), mode: "insensitive" } },
+    ];
+  }
+
+  // ─── Ordinamento dinamico ─────────────────────────────────
+  const allowedSortFields = ["createdAt", "updatedAt", "dueDate", "title", "priority"];
+  const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+  const safeSortOrder = sortOrder === "asc" ? "asc" : "desc";
+
+  const tasks = await prisma.task.findMany({
+    where,
+    include: {
+      category: true,
+      tags: { include: { tag: true } },
+    },
+    orderBy: { [safeSortBy]: safeSortOrder },
   });
+
+  return reply.send(tasks);
+});
 
   // ─── GET /api/tasks/calendar ──────────────────────────────
   app.get<{
