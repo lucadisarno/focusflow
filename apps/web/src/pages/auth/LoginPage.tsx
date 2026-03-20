@@ -36,15 +36,20 @@ export function LoginPage() {
     password: form.password,
   });
 
-  console.log("Login result:", JSON.stringify(result)); // ← aggiungi questa riga
-
   if (result.error) {
     setError(result.error.message ?? "Errore durante il login");
     setLoading(false);
     return;
   }
 
-  navigate("/dashboard");
+  // ✅ Naviga se c'è data e non c'è errore
+  if (result.data) {
+    navigate("/dashboard");
+    return;
+  }
+
+  setError("Errore sconosciuto durante il login");
+  setLoading(false);
 };
 
   return (
