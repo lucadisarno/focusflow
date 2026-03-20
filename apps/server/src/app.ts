@@ -33,5 +33,14 @@ export function buildApp() {
   app.register(tagsRoutes, { prefix: "/api/tags" });
   app.register(searchRoutes, { prefix: "/api/search" });
 
+  // Health check
+  app.get("/health", async () => {
+    return { status: "ok", timestamp: new Date().toISOString() };
+  });
+
+  app.get("/ready", async () => {
+    return { status: "ready", uptime: process.uptime() };
+  });
+
   return app;
 }
