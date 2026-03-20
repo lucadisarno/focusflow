@@ -16,6 +16,17 @@ export function createAuth(prisma: { [key: string]: any }, redis: Redis) {
       requireEmailVerification: false,
     },
 
+    advanced: {
+  crossSubdomainCookies: {
+    enabled: true,
+  },
+  defaultCookieAttributes: {
+    secure: true,
+    httpOnly: true,
+    sameSite: "none",
+  },
+},
+
     socialProviders: {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -50,11 +61,12 @@ export function createAuth(prisma: { [key: string]: any }, redis: Redis) {
     },
 
     trustedOrigins: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      process.env.FRONTEND_URL ?? "http://localhost:5173",
-    ],
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  process.env.FRONTEND_URL ?? "http://localhost:5173",
+  "https://focusflow-web-theta.vercel.app",
+   ],
   });
 }
 
