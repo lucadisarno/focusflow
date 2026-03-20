@@ -1,159 +1,150 @@
-# Turborepo starter
+# FocusFlow 🎯
 
-This Turborepo starter is maintained by the Turborepo core team.
+Web app di gestione task scalabile, costruita con un monorepo Turborepo + pnpm.
 
-## Using this example
+## 🌐 Demo live
 
-Run the following command:
+- **Frontend:** https://focusflow-web-theta.vercel.app
+- **Backend API:** https://focusflow-server-uwqz.onrender.com/health
 
-```sh
-npx create-turbo@latest
+> ⚠️ Il backend è ospitato su Render (piano free) e potrebbe impiegare 30-50 secondi per rispondere al primo accesso dopo un periodo di inattività.
+
+## 🛠 Tech Stack
+
+| Area | Tecnologia |
+|------|-----------|
+| **Package Manager** | pnpm |
+| **Monorepo** | Turborepo |
+| **Frontend** | React 18, Vite, Tailwind CSS, shadcn/ui |
+| **Backend** | Node.js, Fastify |
+| **Database** | PostgreSQL (Neon.tech) + Prisma ORM |
+| **Caching** | Redis (Upstash) |
+| **Autenticazione** | BetterAuth |
+| **Deploy Frontend** | Vercel |
+| **Deploy Backend** | Render |
+| **Linguaggio** | TypeScript (100%) |
+
+## 📁 Struttura del progetto
+
+```
+focusflow/
+├── apps/
+│   ├── web/          # React App (Vite + Tailwind + shadcn/ui)
+│   └── server/       # API REST (Fastify)
+├── packages/
+│   ├── db/           # Prisma schema e client condiviso
+│   ├── auth/         # Configurazione BetterAuth condivisa
+│   └── config-typescript/  # Configurazioni TypeScript comuni
+├── turbo.json
+└── pnpm-workspace.yaml
 ```
 
-## What's inside?
+## ✨ Features
 
-This Turborepo includes the following packages/apps:
+- 🔐 **Autenticazione completa** — email/password + Google OAuth, sessioni con Redis
+- ✅ **Gestione Task** — CRUD completo con priorità, status, scadenze
+- 🗂️ **Categorie** — organizza i task con categorie personalizzate (colore + icona)
+- 🏷️ **Tag** — etichetta i task con tag colorati
+- 📅 **Calendario** — visualizza i task con scadenza, drag & drop per cambiare data
+- 🔍 **Search globale** — ricerca istantanea con Cmd+K e debounce 300ms
+- 🔽 **Filtri avanzati** — filtra per status, priorità, categoria, tag, date range
+- 🔗 **URL params sync** — i filtri attivi sono sincronizzati nell'URL
+- 🌙 **Dark/Light mode** — tema dinamico con persistenza
+- ⚡ **Lazy loading** — code splitting automatico per pagina
+- 🚀 **CI/CD** — deploy automatico su push in `main`
 
-### Apps and Packages
+## 🚀 Avvio in locale
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+### Prerequisiti
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+- Node.js >= 18
+- pnpm >= 8
 
-### Utilities
+### Setup
 
-This Turborepo has some additional tools already setup for you:
+```sh
+# Clona il repository
+git clone https://github.com/lucadisarno/focusflow
+cd focusflow
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+# Installa le dipendenze
+pnpm install
+
+# Copia i file di environment
+cp .env.example .env
+# Compila il .env con i tuoi valori (DATABASE_URL, REDIS_URL, BETTER_AUTH_SECRET...)
+
+# Genera il client Prisma
+pnpm --filter @focusflow/db db:generate
+
+# Sincronizza il database
+pnpm --filter @focusflow/db db:push
+```
+
+### Sviluppo
+
+```sh
+# Avvia tutti i servizi in parallelo
+pnpm dev
+
+# Oppure avvia singolarmente
+pnpm --filter @focusflow/web dev      # Frontend → http://localhost:5173
+pnpm --filter @focusflow/server dev   # Backend  → http://localhost:3000
+```
 
 ### Build
 
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
 ```sh
-cd my-turborepo
-turbo build
+# Build di tutti i package
+pnpm build
+
+# Build specifico
+pnpm --filter @focusflow/server build
+pnpm --filter @focusflow/web build
 ```
 
-Without global `turbo`, use your package manager:
+## 🗄️ Database
 
-```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+Il progetto usa **PostgreSQL su Neon.tech** con Prisma ORM. Lo schema include:
+
+- `User`, `Session`, `Account` — gestiti da BetterAuth
+- `Task` — con status, priorità, scadenza, categoria e tag
+- `Category`, `Tag`, `TaskTag` — sistema di organizzazione
+- `FocusSession` — sessioni di focus (estendibile)
+
+## 🔑 Variabili d'ambiente
+
+```env
+# Database (Neon.tech)
+DATABASE_URL=postgresql://...       # Connessione diretta
+DATABASE_DIRECT_URL=postgresql://... # Connessione pooler
+
+# Redis (Upstash)
+UPSTASH_REDIS_REST_URL=https://...
+UPSTASH_REDIS_REST_TOKEN=...
+
+# BetterAuth
+BETTER_AUTH_SECRET=...
+BETTER_AUTH_URL=https://...
+
+# CORS
+CORS_ORIGIN=https://...
+FRONTEND_URL=https://...
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+## 📡 API Endpoints
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/api/auth/sign-in/email` | Login |
+| POST | `/api/auth/sign-up/email` | Registrazione |
+| GET | `/api/tasks` | Lista task (con filtri) |
+| POST | `/api/tasks` | Crea task |
+| PATCH | `/api/tasks/:id` | Aggiorna task |
+| DELETE | `/api/tasks/:id` | Elimina task |
+| GET | `/api/tasks/calendar` | Task per il calendario |
+| GET | `/api/search` | Search globale |
+| GET | `/api/dashboard` | Statistiche dashboard |
+| GET/POST/DELETE | `/api/categories` | Gestione categorie |
+| GET/POST/DELETE | `/api/tags` | Gestione tag |
