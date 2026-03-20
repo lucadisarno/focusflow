@@ -20,30 +20,32 @@ export function LoginPage() {
     return newErrors;
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+ const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const validationErrors = validate();
+  if (Object.keys(validationErrors).length > 0) {
+    setErrors(validationErrors);
+    return;
+  }
 
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    const result = await signIn.email({
-      email: form.email,
-      password: form.password,
-    });
+  const result = await signIn.email({
+    email: form.email,
+    password: form.password,
+  });
 
-    if (result.error) {
-      setError(result.error.message ?? "Errore durante il login");
-      setLoading(false);
-      return;
-    }
+  console.log("Login result:", JSON.stringify(result)); // ← aggiungi questa riga
 
-    navigate("/dashboard");
-  };
+  if (result.error) {
+    setError(result.error.message ?? "Errore durante il login");
+    setLoading(false);
+    return;
+  }
+
+  navigate("/dashboard");
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
