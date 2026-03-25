@@ -109,7 +109,7 @@ function StatusPill({ status }: { status: string }) {
     IN_PROGRESS: { label: "In corso",   bg: "var(--ff-violet-light)", color: "var(--ff-violet)" },
     TODO:        { label: "Da fare",    bg: "var(--ff-amber-light)",  color: "var(--ff-amber-dark)" },
   };
-  const s = map[status] ?? map.TODO;
+  const s = map[status] ?? { label: "Da fare", bg: "var(--ff-amber-light)", color: "var(--ff-amber-dark)" };
   return (
     <span
       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium"
