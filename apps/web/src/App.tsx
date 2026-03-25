@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout";
 import { useSession } from "@/lib/auth-client";
 
 // ─── Lazy imports (code splitting per route) ──────────────
+const LandingPage    = lazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })));
 const LoginPage      = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
 const RegisterPage   = lazy(() => import("@/pages/auth/RegisterPage").then(m => ({ default: m.RegisterPage })));
 const DashboardPage  = lazy(() => import("@/pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
@@ -36,8 +37,14 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          {/* ── Pagina pubblica ── */}
+          <Route path="/"         element={<LandingPage />} />
+
+          {/* ── Auth ── */}
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
+          {/* ── App protetta ── */}
           <Route path="/dashboard" element={
             <ProtectedRoute><DashboardPage /></ProtectedRoute>
           } />
@@ -53,7 +60,9 @@ export default function App() {
           <Route path="/calendar" element={
             <ProtectedRoute><CalendarPage /></ProtectedRoute>
           } />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+
+          {/* ── Fallback ── */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
