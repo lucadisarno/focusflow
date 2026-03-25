@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, Loader2, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -22,21 +20,100 @@ import {
   type Category,
 } from "@/api/categories";
 
-// Componente per renderizzare l'icona dinamicamente
-function CategoryIcon({
-  name,
-  color,
-  size = 18,
-}: {
-  name: string;
-  color: string;
-  size?: number;
-}) {
+// ─── Icona categoria ──────────────────────────────────────
+function CategoryIcon({ name, color, size = 18 }: { name: string; color: string; size?: number }) {
   const IconComponent = ICON_OPTIONS.find((i) => i.name === name)?.icon;
   if (!IconComponent) return null;
   return <IconComponent size={size} style={{ color }} />;
 }
 
+// ─── Card categoria ───────────────────────────────────────
+function CategoryCard({
+  category,
+  onEdit,
+  onDelete,
+}: {
+  category: Category;
+  onEdit: (c: Category) => void;
+  onDelete: (c: Category) => void;
+}) {
+  const taskCount = category._count?.tasks ?? 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div
+        className="group flex items-center justify-between
+                   px-5 py-4 rounded-[--radius-xl] border border-border bg-card
+                   hover:shadow-[0_4px_20px_-8px_rgba(92,74,228,0.10)]
+                   hover:-translate-y-0.5 hover:border-[--ff-violet-light]
+                   transition-all duration-200"
+      >
+        {/* Sinistra: icona + info */}
+        <div className="flex items-center gap-4">
+          {/* Icona con sfondo colorato */}
+          <div
+            className="w-10 h-10 rounded-[--radius-lg] flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${category.color}18` }}
+          >
+            <CategoryIcon name={category.icon} color={category.color} size={18} />
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-foreground leading-tight">
+              {category.name}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {taskCount} {taskCount === 1 ? "task" : "task"}
+            </p>
+          </div>
+        </div>
+
+        {/* Destra: dot colore + azioni */}
+        <div className="flex items-center gap-3">
+          {/* Dot colore + hex */}
+          <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+            <div
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: category.color }}
+            />
+            <span className="text-xs font-mono text-muted-foreground hidden sm:block">
+              {category.color}
+            </span>
+          </div>
+
+          {/* Azioni */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => onEdit(category)}
+              className="p-1.5 rounded-lg text-muted-foreground
+                         hover:text-foreground hover:bg-muted
+                         transition-colors duration-150"
+              title="Modifica"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => onDelete(category)}
+              className="p-1.5 rounded-lg text-muted-foreground
+                         hover:text-[--ff-coral] hover:bg-[--ff-coral-light]
+                         transition-colors duration-150"
+              title="Elimina"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── CATEGORIES PAGE ──────────────────────────────────────
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,14 +124,11 @@ export default function CategoriesPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Form state
   const [formName, setFormName] = useState("");
   const [formColor, setFormColor] = useState("#6366f1");
   const [formIcon, setFormIcon] = useState("folder");
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  useEffect(() => { loadCategories(); }, []);
 
   async function loadCategories() {
     try {
@@ -95,19 +169,11 @@ export default function CategoriesPage() {
     try {
       if (editingCategory) {
         const updated = await updateCategory(editingCategory.id, {
-          name: formName,
-          color: formColor,
-          icon: formIcon,
+          name: formName, color: formColor, icon: formIcon,
         });
-        setCategories((prev) =>
-          prev.map((c) => (c.id === updated.id ? updated : c))
-        );
+        setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       } else {
-        const created = await createCategory({
-          name: formName,
-          color: formColor,
-          icon: formIcon,
-        });
+        const created = await createCategory({ name: formName, color: formColor, icon: formIcon });
         setCategories((prev) => [...prev, created]);
       }
       setDialogOpen(false);
@@ -133,150 +199,126 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Categorie</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+    <div className="max-w-3xl mx-auto px-6 py-10">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between mb-8">
+        <div className="space-y-1">
+          <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground">
+            Organizzazione
+          </p>
+          <h1 className="font-display text-3xl text-foreground">Categorie</h1>
+          <p className="text-sm text-muted-foreground">
             Organizza i tuoi task per progetto
           </p>
         </div>
-        <Button onClick={openCreateDialog} className="gap-2">
-          <Plus size={16} />
+
+        <button
+          onClick={openCreateDialog}
+          className="inline-flex items-center gap-2 px-5 py-2.5
+                     rounded-[--radius-pill] text-sm font-medium
+                     transition-all duration-200 active:scale-95 flex-shrink-0"
+          style={{ backgroundColor: "var(--ff-violet)", color: "white" }}
+        >
+          <Plus size={15} />
           Nuova categoria
-        </Button>
+        </button>
       </div>
 
-      {/* Loading */}
+      {/* ── Loading ── */}
       {loading && (
-        <div className="flex justify-center py-16">
-          <Loader2 className="animate-spin text-muted-foreground" size={28} />
+        <div className="flex justify-center py-20">
+          <Loader2 className="animate-spin text-muted-foreground" size={24} />
         </div>
       )}
 
-      {/* Empty state */}
+      {/* ── Empty state ── */}
       {!loading && categories.length === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-16"
+          className="flex flex-col items-center justify-center py-20 text-center"
         >
-          <FolderOpen size={48} className="mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Nessuna categoria ancora.</p>
-          <Button onClick={openCreateDialog} variant="outline" className="mt-4 gap-2">
+          <div
+            className="w-16 h-16 rounded-[--radius-xl] flex items-center justify-center mb-4"
+            style={{ backgroundColor: "var(--ff-violet-light)" }}
+          >
+            <FolderOpen size={28} style={{ color: "var(--ff-violet)" }} />
+          </div>
+          <p className="text-sm font-medium text-foreground mb-1">
+            Nessuna categoria
+          </p>
+          <p className="text-xs text-muted-foreground mb-5">
+            Crea la tua prima categoria per organizzare i task.
+          </p>
+          <button
+            onClick={openCreateDialog}
+            className="inline-flex items-center gap-2 px-4 py-2
+                       rounded-[--radius-pill] text-sm font-medium border border-border
+                       text-foreground hover:bg-muted transition-colors duration-200"
+          >
             <Plus size={14} />
-            Crea la prima categoria
-          </Button>
+            Crea categoria
+          </button>
         </motion.div>
       )}
 
-      {/* Lista categorie */}
-      <AnimatePresence>
-        {categories.map((category) => (
-          <motion.div
-            key={category.id}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-            className="mb-3"
-          >
-            <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="flex items-center justify-between py-4 px-5">
-                <div className="flex items-center gap-3">
-                  {/* Icona con colore */}
-                  <div
-                    className="... shrink-0"
-                    style={{ backgroundColor: `${category.color}20` }}
-                  >
-                    <CategoryIcon
-                      name={category.icon}
-                      color={category.color}
-                      size={20}
-                    />
-                  </div>
-                  <div>
-                    <p className="font-medium">{category.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {category._count?.tasks ?? 0} task
-                    </p>
-                  </div>
-                </div>
+      {/* ── Lista ── */}
+      <div className="space-y-2">
+        <AnimatePresence>
+          {categories.map((category) => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              onEdit={openEditDialog}
+              onDelete={openDeleteDialog}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Badge colore */}
-                  <Badge
-                    variant="outline"
-                    className="text-xs font-mono"
-                    style={{ borderColor: category.color, color: category.color }}
-                  >
-                    {category.color}
-                  </Badge>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openEditDialog(category)}
-                  >
-                    <Pencil size={15} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => openDeleteDialog(category)}
-                  >
-                    <Trash2 size={15} />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-      {/* Dialog Crea/Modifica */}
+      {/* ── Dialog Crea/Modifica ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-[--radius-xl]">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="font-display text-xl">
               {editingCategory ? "Modifica categoria" : "Nuova categoria"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-5 py-2">
+            {/* Nome */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Nome</label>
+              <label className="text-sm font-medium text-foreground">Nome</label>
               <Input
                 placeholder="Es. Lavoro, Personale, Studio..."
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSave()}
                 autoFocus
+                className="h-10 rounded-[--radius-lg]
+                           focus-visible:ring-[--ff-violet] focus-visible:ring-2
+                           focus-visible:ring-offset-0"
               />
             </div>
 
-            <div className="flex items-center gap-4">
+            {/* Colore + Icona + Anteprima */}
+            <div className="flex items-end gap-6">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Colore</label>
+                <label className="text-sm font-medium text-foreground">Colore</label>
                 <ColorPicker value={formColor} onChange={setFormColor} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Icona</label>
-                <IconPicker
-                  value={formIcon}
-                  onChange={setFormIcon}
-                  color={formColor}
-                />
+                <label className="text-sm font-medium text-foreground">Icona</label>
+                <IconPicker value={formIcon} onChange={setFormIcon} color={formColor} />
               </div>
 
               {/* Anteprima */}
               <div className="space-y-1.5 ml-auto">
-                <label className="text-sm font-medium">Anteprima</label>
+                <label className="text-sm font-medium text-foreground">Anteprima</label>
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${formColor}20` }}
+                  className="w-10 h-10 rounded-[--radius-lg] flex items-center justify-center"
+                  style={{ backgroundColor: `${formColor}18` }}
                 >
                   <CategoryIcon name={formIcon} color={formColor} size={20} />
                 </div>
@@ -284,46 +326,57 @@ export default function CategoriesPage() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)}
+              className="rounded-[--radius-pill]">
               Annulla
             </Button>
-            <Button onClick={handleSave} disabled={saving || !formName.trim()}>
-              {saving && <Loader2 size={14} className="animate-spin mr-2" />}
+            <button
+              onClick={handleSave}
+              disabled={saving || !formName.trim()}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-[--radius-pill]
+                         text-sm font-medium transition-all duration-200
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "var(--ff-violet)", color: "white" }}
+            >
+              {saving && <Loader2 size={13} className="animate-spin" />}
               {editingCategory ? "Salva modifiche" : "Crea categoria"}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Elimina */}
+      {/* ── Dialog Elimina ── */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm rounded-[--radius-xl]">
           <DialogHeader>
-            <DialogTitle>Elimina categoria</DialogTitle>
+            <DialogTitle className="font-display text-xl">
+              Elimina categoria
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Sei sicuro di voler eliminare{" "}
-            <span className="font-semibold text-foreground">
+            <span className="font-medium text-foreground">
               {categoryToDelete?.name}
             </span>
             ? I task associati non verranno eliminati.
           </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}
+              className="rounded-[--radius-pill]">
               Annulla
             </Button>
-            <Button
-              variant="destructive"
+            <button
               onClick={handleDelete}
               disabled={deleting}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-[--radius-pill]
+                         text-sm font-medium transition-all duration-200
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "var(--ff-coral)", color: "white" }}
             >
-              {deleting && <Loader2 size={14} className="animate-spin mr-2" />}
+              {deleting && <Loader2 size={13} className="animate-spin" />}
               Elimina
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
