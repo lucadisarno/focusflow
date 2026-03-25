@@ -217,12 +217,16 @@ export function DashboardPage() {
                       </div>
 
                       {/* Barra progresso */}
-                      <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-1.5 rounded-full overflow-hidden"
+                        style={{ backgroundColor: "var(--ff-sand)" }}
+                      >
                         <div
-                          className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                          className="h-full rounded-full transition-all duration-700"
                           style={{
                             width: `${cat.completionRate}%`,
                             backgroundColor: cat.color,
+                            minWidth: cat.completionRate > 0 ? "6px" : "0px",
                           }}
                         />
                       </div>
