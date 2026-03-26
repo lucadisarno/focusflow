@@ -12,11 +12,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ─── FONT DISPLAY ──────────────────────────
-   Georgia è già disponibile nel sistema.
-   La usiamo SOLO per le headline hero (h1 landing).
-   Aggiungiamo una utility class da usare nel JSX.
-─────────────────────────────────────────── */
 @layer utilities {
   .font-display {
     font-family: 'Georgia', 'Palatino Linotype', 'Book Antiqua', serif;
@@ -24,117 +19,77 @@
   }
 }
 
-/* ─── LIGHT MODE ────────────────────────────
-   Background: bianco caldo, non bianco puro
-   Neutri: sabbia/beige, mai grigio freddo
-   Primary: viola #7C6BEF → oklch(0.54 0.18 280)
-   Accent: ambra #EF9F27 → oklch(0.73 0.17 70)
-─────────────────────────────────────────── */
+/* ─── LIGHT MODE ──────────────────────────── */
 :root {
-  /* Superfici */
-  --background:           oklch(0.99 0.005 80);   /* bianco caldo leggerissimo */
-  --foreground:           oklch(0.18 0.01 60);    /* quasi-nero con calore */
-  --card:                 oklch(0.98 0.007 75);   /* superficie card: crema molto chiara */
+  --background:           oklch(0.99 0.005 80);
+  --foreground:           oklch(0.18 0.01 60);
+  --card:                 oklch(0.98 0.007 75);
   --card-foreground:      oklch(0.18 0.01 60);
   --popover:              oklch(0.99 0.005 80);
   --popover-foreground:   oklch(0.18 0.01 60);
-
-  /* Primary — Viola caldo */
-  --primary:              oklch(0.54 0.18 280);   /* #7C6BEF */
-  --primary-foreground:   oklch(0.99 0.005 80);   /* bianco caldo su viola */
-
-  /* Secondary — Sabbia */
-  --secondary:            oklch(0.94 0.015 75);   /* #F0E9DC — beige chiaro */
+  --primary:              oklch(0.54 0.18 280);
+  --primary-foreground:   oklch(0.99 0.005 80);
+  --secondary:            oklch(0.94 0.015 75);
   --secondary-foreground: oklch(0.35 0.03 60);
-
-  /* Muted — Sabbia media */
-  --muted:                oklch(0.93 0.012 78);   /* #EDE5D8 */
-  --muted-foreground:     oklch(0.52 0.03 65);    /* testo secondario caldo */
-
-  /* Accent — Ambra */
-  --accent:               oklch(0.93 0.012 78);   /* stesso muted, usato per hover */
+  --muted:                oklch(0.93 0.012 78);
+  --muted-foreground:     oklch(0.52 0.03 65);
+  --accent:               oklch(0.93 0.012 78);
   --accent-foreground:    oklch(0.35 0.03 60);
-
-  /* Destructive — Coral */
-  --destructive:          oklch(0.58 0.20 28);    /* #D85A30 */
-
-  /* Bordi & Input — sabbia */
-  --border:               oklch(0.88 0.018 75);   /* #E0D5C5 */
+  --destructive:          oklch(0.58 0.20 28);
+  --border:               oklch(0.88 0.018 75);
   --input:                oklch(0.88 0.018 75);
-  --ring:                 oklch(0.54 0.18 280);   /* viola per focus ring */
-
-  /* Border radius — più generoso */
-  --radius:               0.875rem;               /* 14px base → cards arrotondate */
-
-  /* Sidebar — neutri caldi */
-  --sidebar:              oklch(0.96 0.012 78);   /* #F9F4EE */
+  --ring:                 oklch(0.54 0.18 280);
+  --radius:               0.875rem;
+  --sidebar:              oklch(0.96 0.012 78);
   --sidebar-foreground:   oklch(0.28 0.02 60);
-  --sidebar-primary:      oklch(0.54 0.18 280);   /* viola */
+  --sidebar-primary:      oklch(0.54 0.18 280);
   --sidebar-primary-foreground: oklch(0.99 0.005 80);
-  --sidebar-accent:       oklch(0.91 0.018 75);   /* #EDE5D8 hover */
+  --sidebar-accent:       oklch(0.91 0.018 75);
   --sidebar-accent-foreground:  oklch(0.28 0.02 60);
   --sidebar-border:       oklch(0.88 0.018 75);
   --sidebar-ring:         oklch(0.54 0.18 280);
+  --chart-1:              oklch(0.54 0.18 280);
+  --chart-2:              oklch(0.73 0.17 70);
+  --chart-3:              oklch(0.58 0.14 168);
+  --chart-4:              oklch(0.58 0.20 28);
+  --chart-5:              oklch(0.70 0.08 75);
 
-  /* Chart — viola + ambra + teal + coral + sabbia */
-  --chart-1:              oklch(0.54 0.18 280);   /* viola */
-  --chart-2:              oklch(0.73 0.17 70);    /* ambra */
-  --chart-3:              oklch(0.58 0.14 168);   /* teal */
-  --chart-4:              oklch(0.58 0.20 28);    /* coral */
-  --chart-5:              oklch(0.70 0.08 75);    /* sabbia media */
-
-  /* Token custom FocusFlow (usabili con var() nel JSX) */
+  /* Token FocusFlow — light */
   --ff-violet:            oklch(0.54 0.18 280);
-  --ff-violet-light:      oklch(0.95 0.04 280);   /* #EEEDFE */
-  --ff-violet-dark:       oklch(0.30 0.18 280);   /* #3C3489 */
-  --ff-amber:             oklch(0.73 0.17 70);    /* #EF9F27 */
-  --ff-amber-light:       oklch(0.97 0.04 75);    /* #FDF3E8 */
-  --ff-amber-dark:        oklch(0.45 0.14 70);    /* #854F0B */
-  --ff-teal:              oklch(0.58 0.14 168);   /* #1D9E75 */
-  --ff-teal-light:        oklch(0.95 0.04 168);   /* #E1F5EE */
-  --ff-coral:             oklch(0.58 0.20 28);    /* #D85A30 */
-  --ff-coral-light:       oklch(0.96 0.03 28);    /* #FAECE7 */
-  --ff-sand:              oklch(0.93 0.012 78);   /* #EDE5D8 */
-  --ff-sand-dark:         oklch(0.88 0.018 75);   /* #E0D5C5 */
-  --ff-warm-bg:           oklch(0.96 0.012 78);   /* #F9F4EE sidebar */
+  --ff-violet-light:      oklch(0.95 0.04 280);
+  --ff-violet-dark:       oklch(0.30 0.18 280);
+  --ff-amber:             oklch(0.73 0.17 70);
+  --ff-amber-light:       oklch(0.97 0.04 75);
+  --ff-amber-dark:        oklch(0.45 0.14 70);
+  --ff-teal:              oklch(0.58 0.14 168);
+  --ff-teal-light:        oklch(0.95 0.04 168);
+  --ff-coral:             oklch(0.58 0.20 28);
+  --ff-coral-light:       oklch(0.96 0.03 28);
+  --ff-sand:              oklch(0.93 0.012 78);
+  --ff-sand-dark:         oklch(0.88 0.018 75);
+  --ff-warm-bg:           oklch(0.96 0.012 78);
 }
 
-/* ─── DARK MODE ─────────────────────────────
-   Non il solito nero puro.
-   Background: marrone scuro caldissimo.
-   I colori primari restano riconoscibili.
-─────────────────────────────────────────── */
+/* ─── DARK MODE ───────────────────────────── */
 .dark {
-  --background:           oklch(0.14 0.015 60);   /* marrone-nero caldo */
-  --foreground:           oklch(0.93 0.008 75);   /* quasi-bianco caldo */
-  --card:                 oklch(0.19 0.015 62);   /* card leggermente più chiara */
+  --background:           oklch(0.14 0.015 60);
+  --foreground:           oklch(0.93 0.008 75);
+  --card:                 oklch(0.19 0.015 62);
   --card-foreground:      oklch(0.93 0.008 75);
   --popover:              oklch(0.19 0.015 62);
   --popover-foreground:   oklch(0.93 0.008 75);
-
-  /* Primary — viola più luminoso in dark */
-  --primary:              oklch(0.72 0.18 280);   /* viola chiaro su dark */
+  --primary:              oklch(0.72 0.18 280);
   --primary-foreground:   oklch(0.14 0.015 60);
-
-  /* Secondary & Muted */
   --secondary:            oklch(0.24 0.018 65);
   --secondary-foreground: oklch(0.85 0.01 75);
   --muted:                oklch(0.24 0.018 65);
   --muted-foreground:     oklch(0.60 0.02 70);
-
-  /* Accent */
   --accent:               oklch(0.24 0.018 65);
   --accent-foreground:    oklch(0.85 0.01 75);
-
-  /* Destructive */
   --destructive:          oklch(0.68 0.18 28);
-
-  /* Bordi */
   --border:               oklch(1 0 0 / 10%);
   --input:                oklch(1 0 0 / 12%);
   --ring:                 oklch(0.72 0.18 280);
-
-  /* Sidebar dark */
   --sidebar:              oklch(0.19 0.015 62);
   --sidebar-foreground:   oklch(0.85 0.01 75);
   --sidebar-primary:      oklch(0.72 0.18 280);
@@ -143,23 +98,40 @@
   --sidebar-accent-foreground:  oklch(0.85 0.01 75);
   --sidebar-border:       oklch(1 0 0 / 10%);
   --sidebar-ring:         oklch(0.72 0.18 280);
-
-  /* Chart dark — stessi hue, più luminosi */
   --chart-1:              oklch(0.72 0.18 280);
   --chart-2:              oklch(0.80 0.15 70);
   --chart-3:              oklch(0.70 0.14 168);
   --chart-4:              oklch(0.70 0.16 28);
   --chart-5:              oklch(0.65 0.06 75);
+
+  /* Token FocusFlow — dark
+     I colori "base" diventano più luminosi.
+     I colori "light" (sfondi pill/blob) diventano
+     scuri e caldi invece che chiari pastello.
+     I colori "dark" (testi su sfondo colorato)
+     diventano chiari e leggibili su scuro.        */
+  --ff-violet:            oklch(0.72 0.18 280);
+  --ff-violet-light:      oklch(0.26 0.09 280);   /* sfondo scuro viola */
+  --ff-violet-dark:       oklch(0.88 0.10 280);   /* testo chiaro */
+
+  --ff-amber:             oklch(0.80 0.15 70);
+  --ff-amber-light:       oklch(0.25 0.07 70);    /* sfondo scuro ambra */
+  --ff-amber-dark:        oklch(0.88 0.10 70);    /* testo chiaro */
+
+  --ff-teal:              oklch(0.70 0.14 168);
+  --ff-teal-light:        oklch(0.24 0.07 168);   /* sfondo scuro teal */
+
+  --ff-coral:             oklch(0.70 0.16 28);
+  --ff-coral-light:       oklch(0.25 0.07 28);    /* sfondo scuro coral */
+
+  --ff-sand:              oklch(0.26 0.015 65);   /* track barre, muted bg */
+  --ff-sand-dark:         oklch(0.32 0.015 65);   /* bordi neutri */
+  --ff-warm-bg:           oklch(0.19 0.015 62);   /* sidebar = card dark */
 }
 
-/* ─── THEME INLINE ──────────────────────────
-   Mappa i token CSS → classi Tailwind.
-   I --radius-* scalano dal nuovo --radius (14px).
-─────────────────────────────────────────── */
+/* ─── THEME INLINE ────────────────────────── */
 @theme inline {
   --font-sans:                    'Geist Variable', sans-serif;
-
-  /* Colori → Tailwind */
   --color-background:             var(--background);
   --color-foreground:             var(--foreground);
   --color-card:                   var(--card);
@@ -178,15 +150,11 @@
   --color-border:                 var(--border);
   --color-input:                  var(--input);
   --color-ring:                   var(--ring);
-
-  /* Chart */
   --color-chart-1:                var(--chart-1);
   --color-chart-2:                var(--chart-2);
   --color-chart-3:                var(--chart-3);
   --color-chart-4:                var(--chart-4);
   --color-chart-5:                var(--chart-5);
-
-  /* Sidebar */
   --color-sidebar:                var(--sidebar);
   --color-sidebar-foreground:     var(--sidebar-foreground);
   --color-sidebar-primary:        var(--sidebar-primary);
@@ -195,8 +163,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border:         var(--sidebar-border);
   --color-sidebar-ring:           var(--sidebar-ring);
-
-  /* Token FocusFlow → Tailwind (es: bg-[--ff-violet]) */
   --color-ff-violet:              var(--ff-violet);
   --color-ff-violet-light:        var(--ff-violet-light);
   --color-ff-amber:               var(--ff-amber);
@@ -207,46 +173,32 @@
   --color-ff-coral-light:         var(--ff-coral-light);
   --color-ff-sand:                var(--ff-sand);
   --color-ff-warm-bg:             var(--ff-warm-bg);
-
-  /* Border radius scalati su 14px */
-  --radius-sm:   calc(var(--radius) * 0.5);   /* ~7px  */
-  --radius-md:   calc(var(--radius) * 0.75);  /* ~10px */
-  --radius-lg:   var(--radius);               /* 14px  */
-  --radius-xl:   calc(var(--radius) * 1.4);   /* ~20px */
-  --radius-2xl:  calc(var(--radius) * 1.8);   /* ~25px */
-  --radius-3xl:  calc(var(--radius) * 2.2);   /* ~31px */
-  --radius-pill: 9999px;                      /* pill */
+  --radius-sm:   calc(var(--radius) * 0.5);
+  --radius-md:   calc(var(--radius) * 0.75);
+  --radius-lg:   var(--radius);
+  --radius-xl:   calc(var(--radius) * 1.4);
+  --radius-2xl:  calc(var(--radius) * 1.8);
+  --radius-3xl:  calc(var(--radius) * 2.2);
+  --radius-pill: 9999px;
 }
 
-/* ─── BASE ──────────────────────────────────
-   Stili di reset globali.
-   Scrollbar custom solo su webkit (opzionale).
-─────────────────────────────────────────── */
+/* ─── BASE ────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-
   html {
     @apply font-sans;
     scroll-behavior: smooth;
   }
-
-  /* Scrollbar sottile e calda (Chrome/Safari) */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
     background: var(--ff-sand-dark);
     border-radius: 9999px;
@@ -254,14 +206,10 @@
   ::-webkit-scrollbar-thumb:hover {
     background: var(--muted-foreground);
   }
-
-  /* Selezione testo — viola chiaro */
   ::selection {
     background: var(--ff-violet-light);
     color: var(--ff-violet-dark);
   }
-
-  /* Focus ring coerente con il brand */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
