@@ -288,7 +288,7 @@ export function TaskPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={categoryId} onValueChange={(v) => setCategoryId(v === "none" ? "" : v)}>
+              <Select value={categoryId} onValueChange={(v) => setCategoryId(v === "none" ? "" : (v ?? ""))}>
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
                   <SelectValue placeholder="Categoria" />
                 </SelectTrigger>
@@ -355,7 +355,7 @@ export function TaskPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <Select value={filters.status}
-              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : v)}>
+              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 <SelectValue placeholder="Tutti gli status" />
               </SelectTrigger>
@@ -368,7 +368,7 @@ export function TaskPage() {
             </Select>
 
             <Select value={filters.priority}
-              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : v)}>
+              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 <SelectValue placeholder="Tutte le priorità" />
               </SelectTrigger>
@@ -381,7 +381,7 @@ export function TaskPage() {
             </Select>
 
             <Select value={filters.categoryId}
-              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : v)}>
+              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 <SelectValue placeholder="Tutte le categorie" />
               </SelectTrigger>
@@ -399,7 +399,7 @@ export function TaskPage() {
             </Select>
 
             <Select value={filters.tagId}
-              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : v)}>
+              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 <SelectValue placeholder="Tutti i tag" />
               </SelectTrigger>
