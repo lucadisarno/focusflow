@@ -118,6 +118,30 @@ function CategoryTriggerLabel({
   );
 }
 
+// ─── FIX: TagTriggerLabel ─────────────────────────────────
+function TagTriggerLabel({
+  value,
+  tags,
+  placeholder,
+}: {
+  value: string | null | undefined;
+  tags: Tag[];
+  placeholder: string;
+}) {
+  if (!value || value === "ALL") {
+    return <span className="text-muted-foreground">{placeholder}</span>;
+  }
+  const tag = tags.find((t) => t.id === value);
+  if (!tag) return <span className="text-muted-foreground">{placeholder}</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="w-2 h-2 rounded-full flex-shrink-0"
+        style={{ backgroundColor: tag.color }} />
+      <span>{tag.name}</span>
+    </span>
+  );
+}
+
 // ─── Tipi filtri ──────────────────────────────────────────
 interface Filters {
   status: string; priority: string; categoryId: string;
@@ -465,7 +489,12 @@ export function TaskPage() {
               onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : (v ?? ""))}
             >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                <SelectValue placeholder="Tutti i tag" />
+                {/* FIX: mostra nome tag invece dell'ID nel trigger filtro */}
+                <TagTriggerLabel
+                  value={filters.tagId}
+                  tags={tags}
+                  placeholder="Tutti i tag"
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutti i tag</SelectItem>
