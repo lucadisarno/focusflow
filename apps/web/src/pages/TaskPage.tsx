@@ -92,6 +92,32 @@ function PriorityPill({ priority }: { priority: Task["priority"] }) {
   );
 }
 
+// ─── FIX: CategorySelectTriggerLabel ─────────────────────
+// Radix UI Select non renderizza JSX complesso nel trigger,
+// mostra solo il testo. Usiamo questo helper per ottenere
+// la label corretta da mostrare nel SelectTrigger.
+function CategoryTriggerLabel({
+  value,
+  categories,
+  placeholder,
+}: {
+  value: string;
+  categories: Category[];
+  placeholder: string;
+}) {
+  if (!value || value === "none" || value === "ALL") {
+    return <span className="text-muted-foreground">{placeholder}</span>;
+  }
+  const cat = categories.find((c) => c.id === value);
+  if (!cat) return <span className="text-muted-foreground">{placeholder}</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <CategoryIcon name={cat.icon} color={cat.color} size={13} />
+      <span>{cat.name}</span>
+    </span>
+  );
+}
+
 // ─── Tipi filtri ──────────────────────────────────────────
 interface Filters {
   status: string; priority: string; categoryId: string;
@@ -277,9 +303,11 @@ export function TaskPage() {
             />
 
             <div className="grid grid-cols-2 gap-3">
+              {/* ── Priorità ── */}
               <Select value={priority} onValueChange={(v) => setPriority(v as "LOW" | "MEDIUM" | "HIGH")}>
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
-                  <SelectValue placeholder="Priorità" />
+                  {/* FIX: mostra label italiano invece del valore enum */}
+                  <span>{priorityConfig[priority]?.label ?? "Priorità"}</span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="LOW">Bassa</SelectItem>
@@ -288,9 +316,18 @@ export function TaskPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={categoryId} onValueChange={(v) => setCategoryId(v === "none" ? "" : (v ?? ""))}>
+              {/* ── Categoria ── */}
+              <Select
+                value={categoryId || "none"}
+                onValueChange={(v) => setCategoryId(v === "none" ? "" : v)}
+              >
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
-                  <SelectValue placeholder="Categoria" />
+                  {/* FIX: mostra nome categoria invece dell'ID */}
+                  <CategoryTriggerLabel
+                    value={categoryId}
+                    categories={categories}
+                    placeholder="Categoria"
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nessuna categoria</SelectItem>
@@ -354,10 +391,18 @@ export function TaskPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Select value={filters.status}
-              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : (v ?? ""))}>
+            {/* ── Filtro Status ── */}
+            <Select
+              value={filters.status || "ALL"}
+              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : v)}
+            >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                <SelectValue placeholder="Tutti gli status" />
+                {/* FIX: mostra label italiano nel trigger del filtro status */}
+                <span>
+                  {filters.status
+                    ? (statusConfig[filters.status as keyof typeof statusConfig]?.label ?? filters.status)
+                    : "Tutti gli status"}
+                </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutti gli status</SelectItem>
@@ -367,10 +412,18 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
-            <Select value={filters.priority}
-              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : (v ?? ""))}>
+            {/* ── Filtro Priorità ── */}
+            <Select
+              value={filters.priority || "ALL"}
+              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : v)}
+            >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                <SelectValue placeholder="Tutte le priorità" />
+                {/* FIX: mostra label italiano nel trigger del filtro priorità */}
+                <span>
+                  {filters.priority
+                    ? (priorityConfig[filters.priority as keyof typeof priorityConfig]?.label ?? filters.priority)
+                    : "Tutte le priorità"}
+                </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutte le priorità</SelectItem>
@@ -380,10 +433,18 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
-            <Select value={filters.categoryId}
-              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : (v ?? ""))}>
+            {/* ── Filtro Categoria ── */}
+            <Select
+              value={filters.categoryId || "ALL"}
+              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : v)}
+            >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                <SelectValue placeholder="Tutte le categorie" />
+                {/* FIX: mostra nome categoria invece dell'ID nel trigger filtro */}
+                <CategoryTriggerLabel
+                  value={filters.categoryId}
+                  categories={categories}
+                  placeholder="Tutte le categorie"
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutte le categorie</SelectItem>
@@ -398,8 +459,11 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
-            <Select value={filters.tagId}
-              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : (v ?? ""))}>
+            {/* ── Filtro Tag ── */}
+            <Select
+              value={filters.tagId || "ALL"}
+              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : v)}
+            >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 <SelectValue placeholder="Tutti i tag" />
               </SelectTrigger>
