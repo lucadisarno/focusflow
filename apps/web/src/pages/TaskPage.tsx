@@ -101,7 +101,7 @@ function CategoryTriggerLabel({
   categories,
   placeholder,
 }: {
-  value: string;
+  value: string | null | undefined;
   categories: Category[];
   placeholder: string;
 }) {
@@ -319,7 +319,7 @@ export function TaskPage() {
               {/* ── Categoria ── */}
               <Select
                 value={categoryId || "none"}
-                onValueChange={(v) => setCategoryId(v === "none" ? "" : v)}
+                onValueChange={(v) => setCategoryId(v === "none" ? "" : (v ?? ""))}
               >
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
                   {/* FIX: mostra nome categoria invece dell'ID */}
@@ -394,7 +394,7 @@ export function TaskPage() {
             {/* ── Filtro Status ── */}
             <Select
               value={filters.status || "ALL"}
-              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : v)}
+              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : (v ?? ""))}
             >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 {/* FIX: mostra label italiano nel trigger del filtro status */}
@@ -415,7 +415,7 @@ export function TaskPage() {
             {/* ── Filtro Priorità ── */}
             <Select
               value={filters.priority || "ALL"}
-              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : v)}
+              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : (v ?? ""))}
             >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 {/* FIX: mostra label italiano nel trigger del filtro priorità */}
@@ -436,7 +436,7 @@ export function TaskPage() {
             {/* ── Filtro Categoria ── */}
             <Select
               value={filters.categoryId || "ALL"}
-              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : v)}
+              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : (v ?? ""))}
             >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 {/* FIX: mostra nome categoria invece dell'ID nel trigger filtro */}
@@ -462,7 +462,7 @@ export function TaskPage() {
             {/* ── Filtro Tag ── */}
             <Select
               value={filters.tagId || "ALL"}
-              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : v)}
+              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : (v ?? ""))}
             >
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 <SelectValue placeholder="Tutti i tag" />
