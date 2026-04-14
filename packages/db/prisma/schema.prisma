@@ -1,6 +1,5 @@
 generator client {
   provider        = "prisma-client-js"
-  output          = "../node_modules/.prisma/client"
   previewFeatures = ["postgresqlExtensions"]
 }
 
@@ -133,12 +132,12 @@ model Task {
   focusSessions FocusSession[]
 
   // ─── Indici per search & filtri ───────────────────────────────
-  @@index([userId])                        // query per utente
-  @@index([userId, status])               // filtro status
-  @@index([userId, priority])             // filtro priority
-  @@index([userId, categoryId])           // filtro categoria
-  @@index([userId, dueDate])              // filtro date range
-  @@index([userId, status, priority])     // filtro combinato
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, priority])
+  @@index([userId, categoryId])
+  @@index([userId, dueDate])
+  @@index([userId, status, priority])
   @@map("tasks")
 }
 

@@ -1,14 +1,18 @@
-// @ts-ignore
-import Prisma from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { PrismaClient } = Prisma as any;
 
 function createPrismaClient() {
   const connectionString = process.env["DATABASE_URL"]!;
   const adapter = new PrismaNeon({ connectionString });
-  return new PrismaClient({ adapter });
+
+  return new PrismaClient({
+    adapter,
+    // ── Query logging: attivo solo in development ──────────
+    // In produzione non logghiamo le query per performance e sicurezza
+    log: process.env["NODE_ENV"] === "production"
+      ? []
+      : ["query", "info", "warn", "error"],
+  });
 }
 
 const globalForPrisma = globalThis as unknown as {
