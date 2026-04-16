@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { taskApi, type Task, apiFetch } from "@/lib/api";
 import { getCategories, type Category } from "@/api/categories";
@@ -92,14 +92,9 @@ function PriorityPill({ priority }: { priority: Task["priority"] }) {
   );
 }
 
-// ─── FIX: CategorySelectTriggerLabel ─────────────────────
-// Radix UI Select non renderizza JSX complesso nel trigger,
-// mostra solo il testo. Usiamo questo helper per ottenere
-// la label corretta da mostrare nel SelectTrigger.
+// ─── CategoryTriggerLabel ─────────────────────────────────
 function CategoryTriggerLabel({
-  value,
-  categories,
-  placeholder,
+  value, categories, placeholder,
 }: {
   value: string | null | undefined;
   categories: Category[];
@@ -118,11 +113,9 @@ function CategoryTriggerLabel({
   );
 }
 
-// ─── FIX: TagTriggerLabel ─────────────────────────────────
+// ─── TagTriggerLabel ──────────────────────────────────────
 function TagTriggerLabel({
-  value,
-  tags,
-  placeholder,
+  value, tags, placeholder,
 }: {
   value: string | null | undefined;
   tags: Tag[];
@@ -135,10 +128,54 @@ function TagTriggerLabel({
   if (!tag) return <span className="text-muted-foreground">{placeholder}</span>;
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="w-2 h-2 rounded-full flex-shrink-0"
-        style={{ backgroundColor: tag.color }} />
+      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
       <span>{tag.name}</span>
     </span>
+  );
+}
+
+// ─── TaskStats ────────────────────────────────────────────
+// Componente separato: riceve tasks come prop e calcola
+// le statistiche con useMemo — ricalcola SOLO quando tasks
+// cambia, non quando cambia showForm, showFilters, ecc.
+function TaskStats({ tasks }: { tasks: Task[] }) {
+  const stats = useMemo(() => ({
+    total:       tasks.length,
+    todo:        tasks.filter((t) => t.status === "TODO").length,
+    in_progress: tasks.filter((t) => t.status === "IN_PROGRESS").length,
+    done:        tasks.filter((t) => t.status === "DONE").length,
+  }), [tasks]);
+
+  if (stats.total === 0) return null;
+
+  return (
+    <div className="grid grid-cols-4 gap-3">
+      <div className="rounded-[--radius-xl] border border-border bg-card px-4 py-3 text-center">
+        <p className="text-2xl font-semibold text-foreground">{stats.total}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Totale</p>
+      </div>
+      <div className="rounded-[--radius-xl] border bg-card px-4 py-3 text-center"
+        style={{ borderColor: "var(--ff-amber-light)" }}>
+        <p className="text-2xl font-semibold" style={{ color: "var(--ff-amber-dark)" }}>
+          {stats.todo}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">Da fare</p>
+      </div>
+      <div className="rounded-[--radius-xl] border bg-card px-4 py-3 text-center"
+        style={{ borderColor: "var(--ff-violet-light)" }}>
+        <p className="text-2xl font-semibold" style={{ color: "var(--ff-violet)" }}>
+          {stats.in_progress}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">In corso</p>
+      </div>
+      <div className="rounded-[--radius-xl] border bg-card px-4 py-3 text-center"
+        style={{ borderColor: "var(--ff-teal-light)" }}>
+        <p className="text-2xl font-semibold" style={{ color: "var(--ff-teal)" }}>
+          {stats.done}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">Completati</p>
+      </div>
+    </div>
   );
 }
 
@@ -158,7 +195,6 @@ export function TaskPage() {
   const [error, setError]               = useState<string | null>(null);
   const [showFilters, setShowFilters]   = useState(false);
 
-  // Form state
   const [title, setTitle]                   = useState("");
   const [description, setDescription]       = useState("");
   const [priority, setPriority]             = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
@@ -235,19 +271,34 @@ export function TaskPage() {
     }
   };
 
-  const handleToggleStatus = async (task: Task) => {
+  // ── useCallback: handleToggleStatus ───────────────────────
+  // PERCHÉ: passata come prop a ogni task card nel .map()
+  // Senza → nuova funzione ad ogni render → tutti i card
+  // si re-renderizzano anche quando apri/chiudi il form.
+  // Con → stessa reference → nessun re-render inutile.
+  // Dipendenze []: setTasks è stabile (garantito da React).
+  const handleToggleStatus = useCallback(async (task: Task) => {
     try {
       const updated = await taskApi.update(task.id, { status: nextStatus(task.status) });
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-    } catch { setError("Errore nell'aggiornamento"); }
-  };
+    } catch {
+      setError("Errore nell'aggiornamento");
+    }
+  }, []);
 
-  const handleDelete = async (id: string) => {
+  // ── useCallback: handleDelete ─────────────────────────────
+  // PERCHÉ: stesso motivo di handleToggleStatus.
+  // Aprire il form "Nuovo task" non deve causare re-render
+  // di tutti i task card già renderizzati.
+  // Dipendenze []: setTasks è stabile (garantito da React).
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await taskApi.delete(id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
-    } catch { setError("Errore nell'eliminazione"); }
-  };
+    } catch {
+      setError("Errore nell'eliminazione");
+    }
+  }, []);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
@@ -265,7 +316,6 @@ export function TaskPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Filtri */}
           <button
             onClick={() => setShowFilters((v) => !v)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[--radius-pill]
@@ -282,7 +332,6 @@ export function TaskPage() {
             )}
           </button>
 
-          {/* Nuovo task */}
           <button
             onClick={() => setShowForm((v) => !v)}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[--radius-pill]
@@ -295,7 +344,10 @@ export function TaskPage() {
         </div>
       </div>
 
-      {/* ── Form creazione (collassabile) ── */}
+      {/* ── TaskStats: visibile solo quando i task sono caricati ── */}
+      {!loading && <TaskStats tasks={tasks} />}
+
+      {/* ── Form creazione ── */}
       {showForm && (
         <div className="rounded-[--radius-xl] border border-[--ff-violet-light] bg-card p-6 space-y-4">
           <div className="flex items-center justify-between mb-1">
@@ -327,10 +379,8 @@ export function TaskPage() {
             />
 
             <div className="grid grid-cols-2 gap-3">
-              {/* ── Priorità ── */}
               <Select value={priority} onValueChange={(v) => setPriority(v as "LOW" | "MEDIUM" | "HIGH")}>
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
-                  {/* FIX: mostra label italiano invece del valore enum */}
                   <span>{priorityConfig[priority]?.label ?? "Priorità"}</span>
                 </SelectTrigger>
                 <SelectContent>
@@ -340,18 +390,12 @@ export function TaskPage() {
                 </SelectContent>
               </Select>
 
-              {/* ── Categoria ── */}
               <Select
                 value={categoryId || "none"}
                 onValueChange={(v) => setCategoryId(v === "none" ? "" : (v ?? ""))}
               >
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
-                  {/* FIX: mostra nome categoria invece dell'ID */}
-                  <CategoryTriggerLabel
-                    value={categoryId}
-                    categories={categories}
-                    placeholder="Categoria"
-                  />
+                  <CategoryTriggerLabel value={categoryId} categories={categories} placeholder="Categoria" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nessuna categoria</SelectItem>
@@ -415,13 +459,9 @@ export function TaskPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* ── Filtro Status ── */}
-            <Select
-              value={filters.status || "ALL"}
-              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : (v ?? ""))}
-            >
+            <Select value={filters.status || "ALL"}
+              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                {/* FIX: mostra label italiano nel trigger del filtro status */}
                 <span>
                   {filters.status
                     ? (statusConfig[filters.status as keyof typeof statusConfig]?.label ?? filters.status)
@@ -436,13 +476,9 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
-            {/* ── Filtro Priorità ── */}
-            <Select
-              value={filters.priority || "ALL"}
-              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : (v ?? ""))}
-            >
+            <Select value={filters.priority || "ALL"}
+              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                {/* FIX: mostra label italiano nel trigger del filtro priorità */}
                 <span>
                   {filters.priority
                     ? (priorityConfig[filters.priority as keyof typeof priorityConfig]?.label ?? filters.priority)
@@ -457,18 +493,10 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
-            {/* ── Filtro Categoria ── */}
-            <Select
-              value={filters.categoryId || "ALL"}
-              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : (v ?? ""))}
-            >
+            <Select value={filters.categoryId || "ALL"}
+              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                {/* FIX: mostra nome categoria invece dell'ID nel trigger filtro */}
-                <CategoryTriggerLabel
-                  value={filters.categoryId}
-                  categories={categories}
-                  placeholder="Tutte le categorie"
-                />
+                <CategoryTriggerLabel value={filters.categoryId} categories={categories} placeholder="Tutte le categorie" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutte le categorie</SelectItem>
@@ -483,18 +511,10 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
-            {/* ── Filtro Tag ── */}
-            <Select
-              value={filters.tagId || "ALL"}
-              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : (v ?? ""))}
-            >
+            <Select value={filters.tagId || "ALL"}
+              onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                {/* FIX: mostra nome tag invece dell'ID nel trigger filtro */}
-                <TagTriggerLabel
-                  value={filters.tagId}
-                  tags={tags}
-                  placeholder="Tutti i tag"
-                />
+                <TagTriggerLabel value={filters.tagId} tags={tags} placeholder="Tutti i tag" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutti i tag</SelectItem>
@@ -565,8 +585,6 @@ export function TaskPage() {
                           ${task.status === "DONE" ? "opacity-60" : ""}`}
             >
               <div className="flex items-start gap-4">
-
-                {/* Toggle status */}
                 <button
                   type="button"
                   onClick={() => handleToggleStatus(task)}
@@ -578,15 +596,10 @@ export function TaskPage() {
                     color: statusConfig[task.status].color,
                   }}
                 >
-                  {(() => {
-                    const Icon = statusConfig[task.status].icon;
-                    return <Icon size={13} />;
-                  })()}
+                  {(() => { const Icon = statusConfig[task.status].icon; return <Icon size={13} />; })()}
                 </button>
 
-                {/* Contenuto */}
                 <div className="flex-1 min-w-0 space-y-2">
-                  {/* Titolo + badge */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className={`text-sm font-medium leading-snug
                                    ${task.status === "DONE" ? "line-through text-muted-foreground" : "text-foreground"}`}>
@@ -596,14 +609,10 @@ export function TaskPage() {
                     <PriorityPill priority={task.priority} />
                   </div>
 
-                  {/* Descrizione */}
                   {task.description && (
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {task.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{task.description}</p>
                   )}
 
-                  {/* Meta: scadenza + categoria + tag */}
                   <div className="flex flex-wrap items-center gap-2">
                     {task.dueDate && (
                       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -612,34 +621,22 @@ export function TaskPage() {
                       </span>
                     )}
                     {task.category && (
-                      <span
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium"
-                        style={{
-                          backgroundColor: `${task.category.color}15`,
-                          color: task.category.color,
-                        }}
-                      >
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium"
+                        style={{ backgroundColor: `${task.category.color}15`, color: task.category.color }}>
                         <CategoryIcon name={task.category.icon} color={task.category.color} size={11} />
                         {task.category.name}
                       </span>
                     )}
                     {task.taskTags?.map(({ tag }) => (
-                      <span
-                        key={tag.id}
+                      <span key={tag.id}
                         className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium"
-                        style={{
-                          backgroundColor: `${tag.color}15`,
-                          border: `1px solid ${tag.color}40`,
-                          color: tag.color,
-                        }}
-                      >
+                        style={{ backgroundColor: `${tag.color}15`, border: `1px solid ${tag.color}40`, color: tag.color }}>
                         {tag.name}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                {/* Elimina */}
                 <button
                   onClick={() => handleDelete(task.id)}
                   className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1.5 rounded-lg
