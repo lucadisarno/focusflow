@@ -8,6 +8,29 @@ export type ApiResponse<T> = {
   error?: string;
 };
 
+// ─── TYPE GUARD 1: ApiError ───────────────────────────────
+// Tipo strutturato per gli errori API invece di Record<string, unknown>
+// Vantaggi: accedi a .error e .statusCode con piena type-safety
+export interface ApiError {
+  error: string;
+  statusCode: number;
+}
+
+// isApiError: type guard per ApiError
+// "obj is ApiError" = type predicate →
+// se ritorna true, TypeScript sa che obj è ApiError
+// Usiamo "unknown" invece di "any" perché forziamo la verifica
+export function isApiError(obj: unknown): obj is ApiError {
+  return (
+    typeof obj === "object" &&          // è un oggetto?
+    obj !== null &&                     // non è null?
+    "error" in obj &&                   // ha la prop "error"?
+    "statusCode" in obj &&              // ha la prop "statusCode"?
+    typeof (obj as ApiError).error === "string" &&       // error è string?
+    typeof (obj as ApiError).statusCode === "number"     // statusCode è number?
+  );
+}
+
 // ─── 2. Tipi base ─────────────────────────────────────────
 export interface TaskTag {
   tagId: string;
@@ -37,6 +60,23 @@ export interface Task {
   taskTags: TaskTag[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── TYPE GUARD 2: isTask ─────────────────────────────────
+// Verifica a runtime che un oggetto sconosciuto sia un Task valido.
+// Utile quando ricevi dati dall'API e vuoi essere sicuro al 100%
+// che abbiano la forma giusta prima di usarli.
+export function isTask(obj: unknown): obj is Task {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "id"        in obj && typeof (obj as Task).id        === "string" &&
+    "title"     in obj && typeof (obj as Task).title     === "string" &&
+    "status"    in obj && ["TODO", "IN_PROGRESS", "DONE"].includes((obj as Task).status) &&
+    "priority"  in obj && ["LOW", "MEDIUM", "HIGH"].includes((obj as Task).priority) &&
+    "createdAt" in obj && typeof (obj as Task).createdAt === "string" &&
+    "updatedAt" in obj && typeof (obj as Task).updatedAt === "string"
+  );
 }
 
 // ─── 3. CreateTaskInput con Pick ──────────────────────────
@@ -119,13 +159,15 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    // Record<string, unknown> invece di any ←────────────────
-    // Record<string, unknown> = oggetto con chiavi string e valori sconosciuti
-    // È più sicuro di "any" perché TypeScript sa che è un oggetto
-    const error = await res.json().catch(
-      (): Record<string, unknown> => ({ error: "Errore sconosciuto" })
-    );
-    throw new Error((error["error"] as string) ?? "Errore nella richiesta");
+    // isApiError: type guard — verifica la struttura prima di accedere ai campi
+    // Prima: (error["error"] as string) → cast unsafe
+    // Ora:   isApiError(error) → verifica reale a runtime
+    const raw = await res.json().catch(() => null);
+    if (isApiError(raw)) {
+      // TypeScript sa che raw.error è string e raw.statusCode è number
+      throw new Error(raw.error);
+    }
+    throw new Error("Errore nella richiesta");
   }
 
   if (res.status === 204) return undefined as T;
