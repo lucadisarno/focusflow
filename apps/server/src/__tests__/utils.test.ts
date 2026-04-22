@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { nextStatus, completionRate, isOverdue } from "../utils";
+import { nextStatus, completionRate, isOverdue } from "../utils.js";
 
 // ─── describe: raggruppa test correlati ───────────────────
 describe("nextStatus", () => {
