@@ -254,17 +254,16 @@ export async function taskRoutes(app: FastifyInstance) {
   });
 
   // ─── POST /api/tasks/with-session ─────────────────────────
-  // Transazione atomica: crea Task + FocusSession insieme.
-  // Se uno dei due fallisce → rollback automatico → DB pulito.
-  //
-  // DIFFERENZA con le altre route:
-  // - Route normale:    2 query separate → se la 2a fallisce, la 1a rimane
-  // - Con $transaction: 2 query atomiche → o entrambe ok o nessuna
+  // Crea Task + FocusSession in modo sicuro.
+  // NOTA: Neon usa connessioni HTTP serverless che non supportano
+  // $transaction interattivo (richiede connessione persistente).
+  // Usiamo invece una strategia "compensating transaction":
+  // se la FocusSession fallisce → eliminiamo manualmente il Task.
   app.post<{
     Body: {
       title: string;
       priority?: "LOW" | "MEDIUM" | "HIGH";
-      duration?: number; // durata sessione in minuti
+      duration?: number;
     };
   }>("/with-session", async (request, reply) => {
     const { title, priority = "MEDIUM", duration = 25 } = request.body;
@@ -274,54 +273,44 @@ export async function taskRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: "Il titolo è obbligatorio" });
     }
 
+    // Step 1 — crea il Task
+    const newTask = await prisma.task.create({
+      data: {
+        title:    title.trim(),
+        status:   "IN_PROGRESS",
+        priority,
+        userId,
+      },
+      include: {
+        category: true,
+        tags: { include: { tag: true } },
+      },
+    });
+
     try {
-      // prisma.$transaction(async tx => {...}) — versione interattiva
-      // tx è il client transazionale: usa lui per tutte le query
-      // Solo alla fine del callback → commit
-      // Se qualsiasi await lancia → rollback automatico
-      const [task, focusSession] = await prisma.$transaction(async (tx) => {
-
-        // Step 1 — crea il Task
-        const newTask = await tx.task.create({
-          data: {
-            title:    title.trim(),
-            status:   "IN_PROGRESS",
-            priority,
-            userId,
-          },
-          include: {
-            category: true,
-            tags: { include: { tag: true } },
-          },
-        });
-
-        // Step 2 — crea la FocusSession collegata al Task
-        // Nota: newTask.id esiste già perché Step 1 è completato
-        // ma siamo ancora DENTRO la transazione → nessun commit ancora
-        const newSession = await tx.focusSession.create({
-          data: {
-            userId,
-            taskId:    newTask.id, // ← collega la sessione al task
-            duration,              // minuti
-            startedAt: new Date(),
-          },
-        });
-
-        // Ritorna entrambi — se arrivi qui → commit automatico
-        return [newTask, newSession];
+      // Step 2 — crea la FocusSession collegata al Task
+      const newSession = await prisma.focusSession.create({
+        data: {
+          userId,
+          taskId:    newTask.id,
+          duration,
+          startedAt: new Date(),
+        },
       });
 
       return reply.status(201).send({
-        task,
-        focusSession,
-        message: "Task e sessione creati atomicamente ✅",
+        task:         newTask,
+        focusSession: newSession,
+        message:      "Task e sessione creati ✅",
       });
 
-    } catch (error) {
-      // Se qualcosa è andato storto → Prisma ha già fatto rollback
-      // Nessun task orfano nel DB
+    } catch (sessionError) {
+      // Se FocusSession fallisce → elimina il Task creato
+      // per mantenere consistenza (compensating transaction)
+      await prisma.task.delete({ where: { id: newTask.id } }).catch(() => {});
+
       return reply.status(500).send({
-        error: "Transazione fallita — nessun dato salvato",
+        error: "Creazione sessione fallita — nessun dato salvato",
       });
     }
   });
