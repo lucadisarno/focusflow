@@ -108,22 +108,21 @@ export async function taskRoutes(app: FastifyInstance) {
       orderBy: { dueDate: "asc" },
     });
 
-
-const events = tasks.map((task: typeof tasks[number]) => ({
-  id: task.id,
-  title: task.title,
-  start: task.dueDate!,
-  end: task.dueDate!,
-  allDay: true,
-  resource: {
-    status: task.status,
-    priority: task.priority,
-    categoryId: task.categoryId,
-    categoryColor: task.category?.color ?? "#6366f1",
-    categoryName: task.category?.name ?? null,
-    tags: task.tags.map((t: { tag: { name: string } }) => t.tag.name),
-  },
-}));
+    const events = tasks.map((task: typeof tasks[number]) => ({
+      id: task.id,
+      title: task.title,
+      start: task.dueDate!,
+      end: task.dueDate!,
+      allDay: true,
+      resource: {
+        status: task.status,
+        priority: task.priority,
+        categoryId: task.categoryId,
+        categoryColor: task.category?.color ?? "#6366f1",
+        categoryName: task.category?.name ?? null,
+        tags: task.tags.map((t: { tag: { name: string } }) => t.tag.name),
+      },
+    }));
 
     return reply.send(events);
   });
@@ -252,5 +251,78 @@ const events = tasks.map((task: typeof tasks[number]) => ({
     await prisma.task.delete({ where: { id } });
 
     return reply.status(204).send();
+  });
+
+  // ─── POST /api/tasks/with-session ─────────────────────────
+  // Transazione atomica: crea Task + FocusSession insieme.
+  // Se uno dei due fallisce → rollback automatico → DB pulito.
+  //
+  // DIFFERENZA con le altre route:
+  // - Route normale:    2 query separate → se la 2a fallisce, la 1a rimane
+  // - Con $transaction: 2 query atomiche → o entrambe ok o nessuna
+  app.post<{
+    Body: {
+      title: string;
+      priority?: "LOW" | "MEDIUM" | "HIGH";
+      duration?: number; // durata sessione in minuti
+    };
+  }>("/with-session", async (request, reply) => {
+    const { title, priority = "MEDIUM", duration = 25 } = request.body;
+    const userId = request.currentUser.id;
+
+    if (!title || title.trim() === "") {
+      return reply.status(400).send({ error: "Il titolo è obbligatorio" });
+    }
+
+    try {
+      // prisma.$transaction(async tx => {...}) — versione interattiva
+      // tx è il client transazionale: usa lui per tutte le query
+      // Solo alla fine del callback → commit
+      // Se qualsiasi await lancia → rollback automatico
+      const [task, focusSession] = await prisma.$transaction(async (tx) => {
+
+        // Step 1 — crea il Task
+        const newTask = await tx.task.create({
+          data: {
+            title:    title.trim(),
+            status:   "IN_PROGRESS",
+            priority,
+            userId,
+          },
+          include: {
+            category: true,
+            tags: { include: { tag: true } },
+          },
+        });
+
+        // Step 2 — crea la FocusSession collegata al Task
+        // Nota: newTask.id esiste già perché Step 1 è completato
+        // ma siamo ancora DENTRO la transazione → nessun commit ancora
+        const newSession = await tx.focusSession.create({
+          data: {
+            userId,
+            taskId:    newTask.id, // ← collega la sessione al task
+            duration,              // minuti
+            startedAt: new Date(),
+          },
+        });
+
+        // Ritorna entrambi — se arrivi qui → commit automatico
+        return [newTask, newSession];
+      });
+
+      return reply.status(201).send({
+        task,
+        focusSession,
+        message: "Task e sessione creati atomicamente ✅",
+      });
+
+    } catch (error) {
+      // Se qualcosa è andato storto → Prisma ha già fatto rollback
+      // Nessun task orfano nel DB
+      return reply.status(500).send({
+        error: "Transazione fallita — nessun dato salvato",
+      });
+    }
   });
 }
