@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { dashboardApi, type DashboardStats } from "@/lib/api";
 import { ICON_OPTIONS } from "@/components/ui/icon-picker";
-import { CheckSquare, Calendar, Tag, Bookmark } from "lucide-react";
 
 // ─── Helper: icona categoria ──────────────────────────────
 function CategoryIcon({ name, color, size = 14 }: { name: string; color: string; size?: number }) {
@@ -24,8 +23,8 @@ function getGreeting() {
 interface StatCardProps {
   label: string;
   value: number | string;
-  accent: string;       // colore CSS var, es. "var(--ff-violet)"
-  accentLight: string;  // versione light, es. "var(--ff-violet-light)"
+  accent: string;
+  accentLight: string;
   suffix?: string;
 }
 
@@ -37,19 +36,14 @@ function StatCard({ label, value, accent, accentLight, suffix }: StatCardProps) 
                  hover:shadow-[0_4px_24px_-8px_rgba(92,74,228,0.10)]
                  hover:-translate-y-0.5 transition-all duration-300"
     >
-      {/* Blob decorativo in basso a destra */}
       <div
         aria-hidden="true"
         className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-40 pointer-events-none"
         style={{ background: accentLight }}
       />
-
-      {/* Label */}
       <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
         {label}
       </span>
-
-      {/* Valore */}
       <div className="flex items-baseline gap-1">
         <span
           className="text-4xl font-medium leading-none tabular-nums"
@@ -68,32 +62,26 @@ function StatCard({ label, value, accent, accentLight, suffix }: StatCardProps) 
 }
 
 // ─── Quick Action Button ──────────────────────────────────
-interface QuickActionProps {
+function QuickAction({ label, onClick, accentLeft }: {
   label: string;
-  icon: React.ElementType;  // ← icona Lucide
   onClick: () => void;
-  accent?: string;
-  accentLight?: string;
-}
-
-function QuickAction({ label, icon: Icon, onClick, accent, accentLight }: QuickActionProps) {
+  accentLeft: string;
+}) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 px-5 py-3.5 rounded-[--radius-lg]
-                 border border-border bg-card text-sm font-medium text-foreground
-                 hover:border-[--ff-violet-light] hover:bg-[--ff-violet-light]/30
-                 hover:-translate-y-0.5 hover:shadow-sm
-                 active:scale-95 transition-all duration-200 text-left"
-      style={accent ? { borderColor: accentLight } : undefined}
+      className="flex items-center px-5 py-3.5 bg-card text-sm font-medium text-foreground
+                 border border-border hover:bg-muted/40
+                 active:scale-95 transition-all duration-200 text-left w-full"
+      style={{
+        borderLeft: `3px solid ${accentLeft}`,
+        borderRadius: "var(--radius-lg)",
+      }}
     >
-      <Icon size={16} style={{ color: accentLight ?? "var(--ff-violet)" }} />
       {label}
     </button>
   );
 }
-
-
 
 // ─── Skeleton loader ──────────────────────────────────────
 function SkeletonCard() {
@@ -128,11 +116,12 @@ export function DashboardPage() {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const { data: stats, isLoading: loading } = useQuery<DashboardStats>({
-  queryKey: ["dashboard"],
-  queryFn:  () => dashboardApi.getStats(),
-  staleTime: 1000 * 60 * 2,
-});
-const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
+    queryKey: ["dashboard"],
+    queryFn:  () => dashboardApi.getStats(),
+    staleTime: 1000 * 60 * 2,
+  });
+  const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-10">
@@ -197,7 +186,6 @@ const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
                     <div key={cat.id} className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          {/* Icona categoria */}
                           <div
                             className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                             style={{ backgroundColor: `${cat.color}18` }}
@@ -212,8 +200,6 @@ const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
                           {cat.completed}/{cat.total} · {cat.completionRate}%
                         </span>
                       </div>
-
-                      {/* Barra progresso */}
                       <div
                         style={{
                           height: "6px",
@@ -239,30 +225,33 @@ const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
               </div>
             )}
 
-            {/* ── Azioni rapide + Task recenti (grid 2 colonne) ── */}
+            {/* ── Azioni rapide + Task recenti ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
               {/* Azioni rapide */}
               <div className="rounded-[--radius-xl] border border-border bg-card p-6 space-y-4">
                 <h2 className="text-sm font-medium text-foreground">Azioni rapide</h2>
                 <div className="grid grid-cols-1 gap-2">
-                  // DOPO
-                    <QuickAction icon={CheckSquare} label="Gestisci Task"
-                      onClick={() => navigate("/tasks")}
-                      accentLight="var(--ff-violet-light)"
-                    />
-                    <QuickAction icon={Calendar} label="Calendario"
-                      onClick={() => navigate("/calendar")}
-                      accentLight="var(--ff-amber-light)"
-                    />
-                    <QuickAction icon={Tag} label="Categorie"
-                      onClick={() => navigate("/categories")}
-                      accentLight="var(--ff-teal-light)"
-                    />
-                    <QuickAction icon={Bookmark} label="Tag"
-                      onClick={() => navigate("/tags")}
-                      accentLight="var(--ff-coral-light)"
-                    />
+                  <QuickAction
+                    label="Gestisci Task"
+                    onClick={() => navigate("/tasks")}
+                    accentLeft="var(--ff-violet)"
+                  />
+                  <QuickAction
+                    label="Calendario"
+                    onClick={() => navigate("/calendar")}
+                    accentLeft="var(--ff-amber)"
+                  />
+                  <QuickAction
+                    label="Categorie"
+                    onClick={() => navigate("/categories")}
+                    accentLeft="var(--ff-teal)"
+                  />
+                  <QuickAction
+                    label="Tag"
+                    onClick={() => navigate("/tags")}
+                    accentLeft="var(--ff-coral)"
+                  />
                 </div>
               </div>
 
