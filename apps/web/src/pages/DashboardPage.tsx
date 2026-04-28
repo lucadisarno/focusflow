@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { dashboardApi, type DashboardStats } from "@/lib/api";
 import { ICON_OPTIONS } from "@/components/ui/icon-picker";
+import { CheckSquare, Calendar, Tag, Bookmark } from "lucide-react";
 
 // ─── Helper: icona categoria ──────────────────────────────
 function CategoryIcon({ name, color, size = 14 }: { name: string; color: string; size?: number }) {
@@ -69,13 +70,13 @@ function StatCard({ label, value, accent, accentLight, suffix }: StatCardProps) 
 // ─── Quick Action Button ──────────────────────────────────
 interface QuickActionProps {
   label: string;
-  emoji: string;
+  icon: React.ElementType;  // ← icona Lucide
   onClick: () => void;
   accent?: string;
   accentLight?: string;
 }
 
-function QuickAction({ label, emoji, onClick, accent, accentLight }: QuickActionProps) {
+function QuickAction({ label, icon: Icon, onClick, accent, accentLight }: QuickActionProps) {
   return (
     <button
       onClick={onClick}
@@ -86,11 +87,13 @@ function QuickAction({ label, emoji, onClick, accent, accentLight }: QuickAction
                  active:scale-95 transition-all duration-200 text-left"
       style={accent ? { borderColor: accentLight } : undefined}
     >
-      <span className="text-base leading-none">{emoji}</span>
+      <Icon size={16} style={{ color: accentLight ?? "var(--ff-violet)" }} />
       {label}
     </button>
   );
 }
+
+
 
 // ─── Skeleton loader ──────────────────────────────────────
 function SkeletonCard() {
@@ -243,26 +246,23 @@ const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
               <div className="rounded-[--radius-xl] border border-border bg-card p-6 space-y-4">
                 <h2 className="text-sm font-medium text-foreground">Azioni rapide</h2>
                 <div className="grid grid-cols-1 gap-2">
-                  <QuickAction
-                    emoji="📝" label="Gestisci Task"
-                    onClick={() => navigate("/tasks")}
-                    accentLight="var(--ff-violet-light)"
-                  />
-                  <QuickAction
-                    emoji="📅" label="Calendario"
-                    onClick={() => navigate("/calendar")}
-                    accentLight="var(--ff-amber-light)"
-                  />
-                  <QuickAction
-                    emoji="🏷️" label="Categorie"
-                    onClick={() => navigate("/categories")}
-                    accentLight="var(--ff-teal-light)"
-                  />
-                  <QuickAction
-                    emoji="🔖" label="Tag"
-                    onClick={() => navigate("/tags")}
-                    accentLight="var(--ff-coral-light)"
-                  />
+                  // DOPO
+                    <QuickAction icon={CheckSquare} label="Gestisci Task"
+                      onClick={() => navigate("/tasks")}
+                      accentLight="var(--ff-violet-light)"
+                    />
+                    <QuickAction icon={Calendar} label="Calendario"
+                      onClick={() => navigate("/calendar")}
+                      accentLight="var(--ff-amber-light)"
+                    />
+                    <QuickAction icon={Tag} label="Categorie"
+                      onClick={() => navigate("/categories")}
+                      accentLight="var(--ff-teal-light)"
+                    />
+                    <QuickAction icon={Bookmark} label="Tag"
+                      onClick={() => navigate("/tags")}
+                      accentLight="var(--ff-coral-light)"
+                    />
                 </div>
               </div>
 
