@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { dashboardApi, type DashboardStats } from "@/lib/api";
@@ -124,18 +124,12 @@ function StatusPill({ status }: { status: string }) {
 export function DashboardPage() {
   const { data: session } = useSession();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
-
-  useEffect(() => {
-    dashboardApi.getStats()
-      .then(setStats)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
+  const { data: stats, isLoading: loading } = useQuery<DashboardStats>({
+  queryKey: ["dashboard"],
+  queryFn:  () => dashboardApi.getStats(),
+  staleTime: 1000 * 60 * 2,
+});
+const userName = session?.user.name?.split(" ")[0] ?? session?.user.email ?? "";
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-10">
