@@ -26,12 +26,13 @@ interface StatCardProps {
   accent: string;
   accentLight: string;
   suffix?: string;
+  sublabel?: string;
 }
 
-function StatCard({ label, value, accent, accentLight, suffix }: StatCardProps) {
+function StatCard({ label, value, accent, accentLight, suffix, sublabel }: StatCardProps) {
   return (
     <div
-      className="relative rounded-[--radius-xl] p-5 flex flex-col gap-3 overflow-hidden
+      className="relative rounded-[--radius-xl] p-5 flex flex-col gap-2 overflow-hidden
                  border border-border bg-card
                  hover:shadow-[0_4px_24px_-8px_rgba(92,74,228,0.10)]
                  hover:-translate-y-0.5 transition-all duration-300"
@@ -41,9 +42,11 @@ function StatCard({ label, value, accent, accentLight, suffix }: StatCardProps) 
         className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-40 pointer-events-none"
         style={{ background: accentLight }}
       />
+
       <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
         {label}
       </span>
+
       <div className="flex items-baseline gap-1">
         <span
           className="text-4xl font-medium leading-none tabular-nums"
@@ -57,6 +60,10 @@ function StatCard({ label, value, accent, accentLight, suffix }: StatCardProps) 
           </span>
         )}
       </div>
+
+      {sublabel && (
+        <span className="text-[11px] text-muted-foreground">{sublabel}</span>
+      )}
     </div>
   );
 }
@@ -89,6 +96,7 @@ function SkeletonCard() {
     <div className="rounded-[--radius-xl] border border-border bg-card p-5 animate-pulse">
       <div className="h-3 w-20 bg-muted rounded-full mb-4" />
       <div className="h-9 w-16 bg-muted rounded-lg" />
+      <div className="h-2 w-24 bg-muted rounded-full mt-3" />
     </div>
   );
 }
@@ -96,14 +104,14 @@ function SkeletonCard() {
 // ─── Task status pill ─────────────────────────────────────
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { label: string; bg: string; color: string }> = {
-    DONE:        { label: "Completato", bg: "var(--ff-teal-light)",  color: "var(--ff-teal)" },
+    DONE:        { label: "Completato", bg: "var(--ff-teal-light)",   color: "var(--ff-teal)" },
     IN_PROGRESS: { label: "In corso",   bg: "var(--ff-violet-light)", color: "var(--ff-violet)" },
     TODO:        { label: "Da fare",    bg: "var(--ff-amber-light)",  color: "var(--ff-amber-dark)" },
   };
   const s = map[status] ?? { label: "Da fare", bg: "var(--ff-amber-light)", color: "var(--ff-amber-dark)" };
   return (
     <span
-      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium"
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0"
       style={{ background: s.bg, color: s.color }}
     >
       {s.label}
@@ -124,7 +132,7 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-10">
+      <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
 
         {/* ── Header ───────────────────────────────────────── */}
         <div className="space-y-1">
@@ -153,18 +161,21 @@ export function DashboardPage() {
                 value={stats.stats.total}
                 accent="var(--ff-violet)"
                 accentLight="var(--ff-violet-light)"
+                sublabel="task attivi"
               />
               <StatCard
                 label="Completati"
                 value={stats.stats.completed}
                 accent="var(--ff-teal)"
                 accentLight="var(--ff-teal-light)"
+                sublabel={`su ${stats.stats.total} totali`}
               />
               <StatCard
                 label="In corso"
                 value={stats.stats.pending}
                 accent="var(--ff-amber)"
                 accentLight="var(--ff-amber-light)"
+                sublabel="da completare"
               />
               <StatCard
                 label="Completamento"
@@ -172,6 +183,7 @@ export function DashboardPage() {
                 suffix="%"
                 accent="var(--ff-violet)"
                 accentLight="var(--ff-violet-light)"
+                sublabel="tasso globale"
               />
             </div>
 
@@ -257,13 +269,13 @@ export function DashboardPage() {
 
               {/* Task recenti */}
               {stats.recentTasks.length > 0 && (
-                <div className="rounded-[--radius-xl] border border-border bg-card p-6 space-y-4">
-                  <h2 className="text-sm font-medium text-foreground">Task recenti</h2>
-                  <div className="space-y-3">
+                <div className="rounded-[--radius-xl] border border-border bg-card p-6 flex flex-col">
+                  <h2 className="text-sm font-medium text-foreground mb-4">Task recenti</h2>
+                  <div className="flex flex-col divide-y divide-border">
                     {stats.recentTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-start justify-between gap-3 group"
+                        className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
                       >
                         <span
                           className={`text-sm leading-snug flex-1 ${
