@@ -4,6 +4,7 @@ import { signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { SearchCommand, openSearchCommand } from "@/components/SearchCommand";
 import { useSession } from "@/lib/auth-client";
+import { Footer } from "@/components/Footer";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -60,7 +61,6 @@ function NavItem({
           : undefined
       }
     >
-      {/* Icona con dot colorato se attiva */}
       <span
         className="w-7 h-7 flex items-center justify-center rounded-md flex-shrink-0"
         style={
@@ -73,7 +73,6 @@ function NavItem({
       </span>
       {label}
 
-      {/* Pill attivo */}
       {isActive && (
         <span
           className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -104,7 +103,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* SearchCommand globale */}
       <SearchCommand />
 
       {/* ── Sidebar ────────────────────────────────────────── */}
@@ -122,7 +120,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Navigazione */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {/* Search button */}
           <button
             onClick={openSearchCommand}
             className="w-full flex items-center gap-3 px-3 py-2.5 mb-3
@@ -142,7 +139,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </kbd>
           </button>
 
-          {/* Separatore */}
           <p className="px-3 pt-1 pb-2 text-[10px] font-medium tracking-widest
                         uppercase text-muted-foreground/60">
             Menu
@@ -158,9 +154,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Footer sidebar: avatar + tema + logout */}
+        {/* Footer sidebar */}
         <div className="px-3 py-4 border-t border-border space-y-1 flex-shrink-0">
-          {/* Toggle tema */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[--radius-lg]
@@ -168,14 +163,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                        hover:bg-[--ff-sand]/60 hover:text-foreground
                        transition-all duration-200"
           >
-            {theme === "dark"
-              ? <Sun size={15} />
-              : <Moon size={15} />
-            }
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
             {theme === "dark" ? "Tema chiaro" : "Tema scuro"}
           </button>
 
-          {/* Logout */}
           <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[--radius-lg]
@@ -187,7 +178,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             Esci
           </button>
 
-          {/* Avatar utente */}
           <div className="flex items-center gap-3 px-3 pt-3 mt-1 border-t border-border">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center
@@ -201,19 +191,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex-1 min-w-0">
               {userName && (
-                <p className="text-xs font-medium text-foreground truncate">
-                  {userName}
-                </p>
+                <p className="text-xs font-medium text-foreground truncate">{userName}</p>
               )}
-              <p className="text-[11px] text-muted-foreground truncate">
-                {userEmail}
-              </p>
+              <p className="text-[11px] text-muted-foreground truncate">{userEmail}</p>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* ── Navbar mobile (top bar) ─────────────────────────── */}
+      {/* ── Navbar mobile ──────────────────────────────────── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20
                       h-14 border-b border-border bg-background/90 backdrop-blur-sm
                       flex items-center justify-between px-4">
@@ -236,7 +222,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Tab bar mobile (bottom) */}
+      {/* Tab bar mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20
                       border-t border-border bg-background/95 backdrop-blur-sm
                       flex items-center justify-around px-2 h-16">
@@ -258,9 +244,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* ── Contenuto principale ───────────────────────────── */}
-      <main className="flex-1 min-w-0 md:overflow-y-auto
+      <main className="flex-1 min-w-0 flex flex-col md:overflow-y-auto
                        pt-14 pb-20 md:pt-0 md:pb-0">
-        {children}
+        <div className="flex-1">
+          {children}
+        </div>
+        <Footer />
       </main>
     </div>
   );
