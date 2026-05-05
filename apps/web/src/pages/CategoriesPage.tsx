@@ -76,15 +76,9 @@ function CategoryCard({
         {/* Destra: dot colore + azioni */}
         <div className="flex items-center gap-3">
           {/* Dot colore + hex */}
-          <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-            <div
-              className="w-3 h-3 rounded-full flex-shrink-0"
-              style={{ backgroundColor: category.color }}
-            />
-            <span className="text-xs font-mono text-muted-foreground hidden sm:block">
-              {category.color}
-            </span>
-          </div>
+          <div className="w-3 h-3 rounded-full flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
+            style={{ backgroundColor: category.color }}
+          />
 
           {/* Azioni */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
