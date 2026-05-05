@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { taskApi, type Task, apiFetch } from "@/lib/api";
 import { getCategories, type Category } from "@/api/categories";
@@ -135,9 +136,6 @@ function TagTriggerLabel({
 }
 
 // ─── TaskStats ────────────────────────────────────────────
-// Componente separato: riceve tasks come prop e calcola
-// le statistiche con useMemo — ricalcola SOLO quando tasks
-// cambia, non quando cambia showForm, showFilters, ecc.
 function TaskStats({ tasks }: { tasks: Task[] }) {
   const stats = useMemo(() => ({
     total:       tasks.length,
@@ -188,12 +186,8 @@ interface Filters {
 // ─── TASK PAGE ────────────────────────────────────────────
 export function TaskPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tasks, setTasks]               = useState<Task[]>([]);
-  const [categories, setCategories]     = useState<Category[]>([]);
-  const [tags, setTags]                 = useState<Tag[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState<string | null>(null);
-  const [showFilters, setShowFilters]   = useState(false);
+  const queryClient = useQueryClient();
+  const [showFilters, setShowFilters] = useState(false);
 
   const [title, setTitle]                   = useState("");
   const [description, setDescription]       = useState("");
@@ -201,7 +195,6 @@ export function TaskPage() {
   const [dueDate, setDueDate]               = useState("");
   const [categoryId, setCategoryId]         = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [submitting, setSubmitting]         = useState(false);
   const [showForm, setShowForm]             = useState(false);
 
   const filters: Filters = {
@@ -223,12 +216,12 @@ export function TaskPage() {
 
   const clearFilters = () => setSearchParams(new URLSearchParams());
 
-  useEffect(() => { Promise.all([loadCategories(), loadTags()]); }, []);
-  useEffect(() => { loadTasks(); }, [searchParams]);
-
-  const loadTasks = async () => {
-    setLoading(true);
-    try {
+  // ── useQuery: tasks ───────────────────────────────────────
+  // queryKey include filters → ogni volta che i filtri cambiano
+  // (via searchParams) TanStack Query rifetch automaticamente.
+  const { data: tasks = [], isLoading: loading, isError } = useQuery({
+    queryKey: ["tasks", filters],
+    queryFn: () => {
       const query = new URLSearchParams();
       if (filters.status)     query.set("status",     filters.status);
       if (filters.priority)   query.set("priority",   filters.priority);
@@ -237,68 +230,74 @@ export function TaskPage() {
       if (filters.dateFrom)   query.set("dateFrom",   filters.dateFrom);
       if (filters.dateTo)     query.set("dateTo",     filters.dateTo);
       const qs = query.toString();
-      const data = await apiFetch<Task[]>(`/api/tasks${qs ? `?${qs}` : ""}`);
-      setTasks(data);
-    } catch {
-      setError("Errore nel caricamento dei task");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return apiFetch<Task[]>(`/api/tasks${qs ? `?${qs}` : ""}`);
+    },
+  });
 
-  const loadCategories = async () => { try { setCategories(await getCategories()); } catch {} };
-  const loadTags       = async () => { try { setTags(await getTags());               } catch {} };
+  // ── useQuery: categories ──────────────────────────────────
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: getCategories,
+  });
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    setSubmitting(true);
-    try {
-      const newTask = await taskApi.create({
-        title, description, priority,
-        dueDate: dueDate || undefined,
-        categoryId: categoryId || undefined,
-        tagIds: selectedTagIds,
-      });
-      setTasks((prev) => [newTask, ...prev]);
+  // ── useQuery: tags ────────────────────────────────────────
+  const { data: tags = [] } = useQuery({
+    queryKey: ["tags"],
+    queryFn: getTags,
+  });
+
+  // ── useMutation: createTask ───────────────────────────────
+  // onSuccess → invalida la cache "tasks" → useQuery rifetch
+  // automaticamente → la lista si aggiorna senza setState manuale.
+  const createMutation = useMutation({
+    mutationFn: (data: {
+      title: string; description: string; priority: "LOW" | "MEDIUM" | "HIGH";
+      dueDate?: string; categoryId?: string; tagIds: string[];
+    }) => taskApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setTitle(""); setDescription(""); setPriority("MEDIUM");
       setDueDate(""); setCategoryId(""); setSelectedTagIds([]);
       setShowForm(false);
-    } catch {
-      setError("Errore nella creazione del task");
-    } finally {
-      setSubmitting(false);
-    }
+    },
+  });
+
+  // ── useMutation: toggleStatus ─────────────────────────────
+  const toggleStatusMutation = useMutation({
+    mutationFn: (task: Task) =>
+      taskApi.update(task.id, { status: nextStatus(task.status) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+
+  // ── useMutation: deleteTask ───────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => taskApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    createMutation.mutate({
+      title, description, priority,
+      dueDate: dueDate || undefined,
+      categoryId: categoryId || undefined,
+      tagIds: selectedTagIds,
+    });
   };
 
-  // ── useCallback: handleToggleStatus ───────────────────────
-  // PERCHÉ: passata come prop a ogni task card nel .map()
-  // Senza → nuova funzione ad ogni render → tutti i card
-  // si re-renderizzano anche quando apri/chiudi il form.
-  // Con → stessa reference → nessun re-render inutile.
-  // Dipendenze []: setTasks è stabile (garantito da React).
-  const handleToggleStatus = useCallback(async (task: Task) => {
-    try {
-      const updated = await taskApi.update(task.id, { status: nextStatus(task.status) });
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-    } catch {
-      setError("Errore nell'aggiornamento");
-    }
-  }, []);
+  // ── useCallback mantenuti per stabilità delle props ───────
+  const handleToggleStatus = useCallback((task: Task) => {
+    toggleStatusMutation.mutate(task);
+  }, [toggleStatusMutation]);
 
-  // ── useCallback: handleDelete ─────────────────────────────
-  // PERCHÉ: stesso motivo di handleToggleStatus.
-  // Aprire il form "Nuovo task" non deve causare re-render
-  // di tutti i task card già renderizzati.
-  // Dipendenze []: setTasks è stabile (garantito da React).
-  const handleDelete = useCallback(async (id: string) => {
-    try {
-      await taskApi.delete(id);
-      setTasks((prev) => prev.filter((t) => t.id !== id));
-    } catch {
-      setError("Errore nell'eliminazione");
-    }
-  }, []);
+  const handleDelete = useCallback((id: string) => {
+    deleteMutation.mutate(id);
+  }, [deleteMutation]);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
@@ -344,7 +343,7 @@ export function TaskPage() {
         </div>
       </div>
 
-      {/* ── TaskStats: visibile solo quando i task sono caricati ── */}
+      {/* ── TaskStats ── */}
       {!loading && <TaskStats tasks={tasks} />}
 
       {/* ── Form creazione ── */}
@@ -363,7 +362,7 @@ export function TaskPage() {
               placeholder="Titolo del task..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={submitting}
+              disabled={createMutation.isPending}
               autoFocus
               className="h-10 rounded-[--radius-lg] focus-visible:ring-[--ff-violet]
                          focus-visible:ring-2 focus-visible:ring-offset-0"
@@ -372,7 +371,7 @@ export function TaskPage() {
               placeholder="Descrizione (opzionale)..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              disabled={submitting}
+              disabled={createMutation.isPending}
               rows={2}
               className="rounded-[--radius-lg] resize-none focus-visible:ring-[--ff-violet]
                          focus-visible:ring-2 focus-visible:ring-offset-0"
@@ -415,7 +414,7 @@ export function TaskPage() {
               <p className="text-xs text-muted-foreground">Scadenza (opzionale)</p>
               <Input type="date" value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                disabled={submitting}
+                disabled={createMutation.isPending}
                 className="h-10 rounded-[--radius-lg] focus-visible:ring-[--ff-violet]
                            focus-visible:ring-2 focus-visible:ring-offset-0" />
             </div>
@@ -430,14 +429,14 @@ export function TaskPage() {
             <div className="flex justify-end pt-1">
               <button
                 type="submit"
-                disabled={submitting || !title.trim()}
+                disabled={createMutation.isPending || !title.trim()}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[--radius-pill]
                            text-sm font-medium transition-all duration-200 active:scale-95
                            disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: "var(--ff-violet)", color: "white" }}
               >
-                {submitting && <Loader2 size={13} className="animate-spin" />}
-                {submitting ? "Creando..." : "Crea task"}
+                {createMutation.isPending && <Loader2 size={13} className="animate-spin" />}
+                {createMutation.isPending ? "Creando..." : "Crea task"}
               </button>
             </div>
           </form>
@@ -548,10 +547,10 @@ export function TaskPage() {
       )}
 
       {/* ── Errore ── */}
-      {error && (
+      {isError && (
         <div className="rounded-[--radius-lg] px-4 py-3 text-sm"
           style={{ backgroundColor: "var(--ff-coral-light)", color: "var(--ff-coral)" }}>
-          {error}
+          Errore nel caricamento dei task
         </div>
       )}
 

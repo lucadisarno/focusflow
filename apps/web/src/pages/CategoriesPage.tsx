@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, Loader2, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,6 @@ function CategoryCard({
       >
         {/* Sinistra: icona + info */}
         <div className="flex items-center gap-4">
-          {/* Icona con sfondo colorato */}
           <div
             className="w-10 h-10 rounded-[--radius-lg] flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: `${category.color}18` }}
@@ -75,12 +75,10 @@ function CategoryCard({
 
         {/* Destra: dot colore + azioni */}
         <div className="flex items-center gap-3">
-          {/* Dot colore + hex */}
           <div className="w-3 h-3 rounded-full flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
             style={{ backgroundColor: category.color }}
           />
 
-          {/* Azioni */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => onEdit(category)}
@@ -109,32 +107,43 @@ function CategoryCard({
 
 // ─── CATEGORIES PAGE ──────────────────────────────────────
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const [formName, setFormName] = useState("");
   const [formColor, setFormColor] = useState("#6366f1");
   const [formIcon, setFormIcon] = useState("folder");
 
-  useEffect(() => { loadCategories(); }, []);
+  // ── useQuery: categories ──────────────────────────────────
+  const { data: categories = [], isLoading: loading } = useQuery({
+    queryKey: ["categories"],
+    queryFn: getCategories,
+  });
 
-  async function loadCategories() {
-    try {
-      setLoading(true);
-      const data = await getCategories();
-      setCategories(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // ── useMutation: save (create + update) ───────────────────
+  const saveMutation = useMutation({
+    mutationFn: (data: { name: string; color: string; icon: string }) =>
+      editingCategory
+        ? updateCategory(editingCategory.id, data)
+        : createCategory(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setDialogOpen(false);
+    },
+  });
+
+  // ── useMutation: delete ───────────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setDeleteDialogOpen(false);
+    },
+  });
 
   function openCreateDialog() {
     setEditingCategory(null);
@@ -157,39 +166,14 @@ export default function CategoriesPage() {
     setDeleteDialogOpen(true);
   }
 
-  async function handleSave() {
+  function handleSave() {
     if (!formName.trim()) return;
-    setSaving(true);
-    try {
-      if (editingCategory) {
-        const updated = await updateCategory(editingCategory.id, {
-          name: formName, color: formColor, icon: formIcon,
-        });
-        setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-      } else {
-        const created = await createCategory({ name: formName, color: formColor, icon: formIcon });
-        setCategories((prev) => [...prev, created]);
-      }
-      setDialogOpen(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
+    saveMutation.mutate({ name: formName, color: formColor, icon: formIcon });
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!categoryToDelete) return;
-    setDeleting(true);
-    try {
-      await deleteCategory(categoryToDelete.id);
-      setCategories((prev) => prev.filter((c) => c.id !== categoryToDelete.id));
-      setDeleteDialogOpen(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setDeleting(false);
-    }
+    deleteMutation.mutate(categoryToDelete.id);
   }
 
   return (
@@ -281,7 +265,6 @@ export default function CategoriesPage() {
           </DialogHeader>
 
           <div className="space-y-5 py-2">
-            {/* Nome */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Nome</label>
               <Input
@@ -296,7 +279,6 @@ export default function CategoriesPage() {
               />
             </div>
 
-            {/* Colore + Icona + Anteprima */}
             <div className="flex items-end gap-6">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">Colore</label>
@@ -307,7 +289,6 @@ export default function CategoriesPage() {
                 <IconPicker value={formIcon} onChange={setFormIcon} color={formColor} />
               </div>
 
-              {/* Anteprima */}
               <div className="space-y-1.5 ml-auto">
                 <label className="text-sm font-medium text-foreground">Anteprima</label>
                 <div
@@ -327,13 +308,13 @@ export default function CategoriesPage() {
             </Button>
             <button
               onClick={handleSave}
-              disabled={saving || !formName.trim()}
+              disabled={saveMutation.isPending || !formName.trim()}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-[--radius-pill]
                          text-sm font-medium transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--ff-violet)", color: "white" }}
             >
-              {saving && <Loader2 size={13} className="animate-spin" />}
+              {saveMutation.isPending && <Loader2 size={13} className="animate-spin" />}
               {editingCategory ? "Salva modifiche" : "Crea categoria"}
             </button>
           </DialogFooter>
@@ -362,13 +343,13 @@ export default function CategoriesPage() {
             </Button>
             <button
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleteMutation.isPending}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-[--radius-pill]
                          text-sm font-medium transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--ff-coral)", color: "white" }}
             >
-              {deleting && <Loader2 size={13} className="animate-spin" />}
+              {deleteMutation.isPending && <Loader2 size={13} className="animate-spin" />}
               Elimina
             </button>
           </DialogFooter>

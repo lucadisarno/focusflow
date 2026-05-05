@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, Loader2, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,26 +12,41 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { getTags, createTag, updateTag, deleteTag, type Tag } from "@/api/tags";
 
 export default function TagsPage() {
-  const [tags, setTags]                       = useState<Tag[]>([]);
-  const [loading, setLoading]                 = useState(true);
-  const [dialogOpen, setDialogOpen]           = useState(false);
+  const queryClient = useQueryClient();
+
+  const [dialogOpen, setDialogOpen]             = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingTag, setEditingTag]           = useState<Tag | null>(null);
-  const [tagToDelete, setTagToDelete]         = useState<Tag | null>(null);
-  const [saving, setSaving]                   = useState(false);
-  const [deleting, setDeleting]               = useState(false);
-  const [formName, setFormName]               = useState("");
-  const [formColor, setFormColor]             = useState("#8b5cf6");
+  const [editingTag, setEditingTag]             = useState<Tag | null>(null);
+  const [tagToDelete, setTagToDelete]           = useState<Tag | null>(null);
+  const [formName, setFormName]                 = useState("");
+  const [formColor, setFormColor]               = useState("#8b5cf6");
 
-  useEffect(() => { loadTags(); }, []);
+  // ── useQuery: tags ────────────────────────────────────────
+  const { data: tags = [], isLoading: loading } = useQuery({
+    queryKey: ["tags"],
+    queryFn: getTags,
+  });
 
-  async function loadTags() {
-    try {
-      setLoading(true);
-      setTags(await getTags());
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  }
+  // ── useMutation: save (create + update) ───────────────────
+  const saveMutation = useMutation({
+    mutationFn: (data: { name: string; color: string }) =>
+      editingTag
+        ? updateTag(editingTag.id, data)
+        : createTag(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      setDialogOpen(false);
+    },
+  });
+
+  // ── useMutation: delete ───────────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteTag(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      setDeleteDialogOpen(false);
+    },
+  });
 
   function openCreateDialog() {
     setEditingTag(null); setFormName(""); setFormColor("#8b5cf6");
@@ -46,31 +62,14 @@ export default function TagsPage() {
     setTagToDelete(tag); setDeleteDialogOpen(true);
   }
 
-  async function handleSave() {
+  function handleSave() {
     if (!formName.trim()) return;
-    setSaving(true);
-    try {
-      if (editingTag) {
-        const updated = await updateTag(editingTag.id, { name: formName, color: formColor });
-        setTags((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      } else {
-        const created = await createTag({ name: formName, color: formColor });
-        setTags((prev) => [...prev, created]);
-      }
-      setDialogOpen(false);
-    } catch (err) { console.error(err); }
-    finally { setSaving(false); }
+    saveMutation.mutate({ name: formName, color: formColor });
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!tagToDelete) return;
-    setDeleting(true);
-    try {
-      await deleteTag(tagToDelete.id);
-      setTags((prev) => prev.filter((t) => t.id !== tagToDelete.id));
-      setDeleteDialogOpen(false);
-    } catch (err) { console.error(err); }
-    finally { setDeleting(false); }
+    deleteMutation.mutate(tagToDelete.id);
   }
 
   return (
@@ -155,27 +154,20 @@ export default function TagsPage() {
                   backgroundColor: `${tag.color}12`,
                 }}
               >
-                {/* Pallino */}
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: tag.color }} />
 
-                {/* Nome */}
                 <span className="text-sm font-medium" style={{ color: tag.color }}>
                   {tag.name}
                 </span>
 
-                {/* Contatore task */}
                 <span
                   className="text-[11px] font-medium px-1.5 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: `${tag.color}20`,
-                    color: tag.color,
-                  }}
+                  style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
                 >
                   {tag._count?.taskTags ?? 0}
                 </span>
 
-                {/* Azioni hover */}
                 <div className="flex items-center gap-0.5 ml-0.5
                                 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   <button
@@ -230,7 +222,6 @@ export default function TagsPage() {
                 <ColorPicker value={formColor} onChange={setFormColor} />
               </div>
 
-              {/* Anteprima pill */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">Anteprima</label>
                 <div
@@ -256,13 +247,13 @@ export default function TagsPage() {
             </Button>
             <button
               onClick={handleSave}
-              disabled={saving || !formName.trim()}
+              disabled={saveMutation.isPending || !formName.trim()}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-[--radius-pill]
                          text-sm font-medium transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--ff-violet)", color: "white" }}
             >
-              {saving && <Loader2 size={13} className="animate-spin" />}
+              {saveMutation.isPending && <Loader2 size={13} className="animate-spin" />}
               {editingTag ? "Salva modifiche" : "Crea tag"}
             </button>
           </DialogFooter>
@@ -289,13 +280,13 @@ export default function TagsPage() {
             </Button>
             <button
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleteMutation.isPending}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-[--radius-pill]
                          text-sm font-medium transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--ff-coral)", color: "white" }}
             >
-              {deleting && <Loader2 size={13} className="animate-spin" />}
+              {deleteMutation.isPending && <Loader2 size={13} className="animate-spin" />}
               Elimina
             </button>
           </DialogFooter>
