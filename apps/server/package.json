@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
+    "@fastify/rate-limit": "^10.3.0",
     "@focusflow/auth": "workspace:*",
     "@focusflow/db": "workspace:*",
     "@types/node": "^22.0.0",

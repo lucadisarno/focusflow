@@ -7,12 +7,17 @@ import { redis } from "../lib/redis.js";
 export const authPlugin = fp(async (app: FastifyInstance) => {
   const auth = createAuth(prisma, redis);
 
-  // Monta tutte le route di BetterAuth su /api/auth/*
+  // Rate limit stretto solo sugli endpoint di login e registrazione
   app.route({
     method: ["GET", "POST"],
     url: "/api/auth/*",
+    config: {
+      rateLimit: {
+        max: 5,          // max 5 tentativi
+        timeWindow: "1m" // per minuto per IP
+      }
+    },
     async handler(request, reply) {
-      // Converti la request di Fastify in una Web API Request
       const url = `http://${request.hostname}${request.url}`;
 
       const webRequest = new Request(url, {
@@ -26,23 +31,19 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
 
       const response = await auth.handler(webRequest);
 
-      // Copia headers dalla risposta di BetterAuth
       response.headers.forEach((value: string, key: string) => {
         reply.header(key, value);
       });
 
       reply.status(response.status);
-
       const body = await response.text();
       return reply.send(body);
     },
   });
 
-  // Decora Fastify con l'istanza auth per usarla nelle route protette
   app.decorate("auth", auth);
 });
 
-// Estendi i tipi di Fastify
 declare module "fastify" {
   interface FastifyInstance {
     auth: ReturnType<typeof createAuth>;

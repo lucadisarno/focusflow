@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import { authPlugin } from "./plugins/auth.plugin.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
@@ -12,6 +13,7 @@ export function buildApp() {
     logger: true,
   });
 
+  // CORS — deve stare prima di tutto
   app.register(cors, {
     origin: [
       "http://localhost:5173",
@@ -22,6 +24,12 @@ export function buildApp() {
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+  });
+
+  // Rate limiting — globale su tutte le route
+  app.register(rateLimit, {
+    max: 100,        // max 100 richieste
+    timeWindow: "1m" // per minuto per IP
   });
 
   app.register(authPlugin);
