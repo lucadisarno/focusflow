@@ -1,0 +1,45 @@
+# ⚠️ FILE DI STUDIO — non eseguire in produzione
+# Questo file descrive come FocusFlow girerebbe in locale con Docker
+# In produzione usiamo Vercel (frontend) + Render (backend) + Neon (DB)
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────
+  # Il database locale — sostituisce Neon.tech in locale
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: focusflow
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: focusflow
+    ports:
+      - "5432:5432"      # host:container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # i dati sopravvivono a docker compose down
+
+  # ── Redis ─────────────────────────────────────────────────
+  # Cache e sessioni — sostituisce Upstash in locale
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # ── Server Fastify ────────────────────────────────────────
+  # Il backend Node.js — usa il Dockerfile in apps/server
+  server:
+    build:
+      context: .                          # root del monorepo
+      dockerfile: apps/server/Dockerfile  # percorso del Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://focusflow:secret@postgres:5432/focusflow
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres   # aspetta che postgres sia pronto
+      - redis      # aspetta che redis sia pronto
+
+# ── Volumi ────────────────────────────────────────────────
+# I dati del DB vengono salvati qui — persistono tra i restart
+volumes:
+  postgres_data:
