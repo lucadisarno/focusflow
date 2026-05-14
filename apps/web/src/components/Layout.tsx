@@ -3,7 +3,7 @@ import { useTheme } from "next-themes";
 import { signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { SearchCommand, openSearchCommand } from "@/components/SearchCommand";
-import { useSession } from "@/lib/auth-client";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Footer } from "@/components/Footer";
 import {
   LayoutDashboard,
@@ -88,10 +88,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navigate    = useNavigate();
   const location    = useLocation();
   const { theme, setTheme } = useTheme();
-  const { data: session } = useSession();
+  const { user } = useAuthStore();
 
-  const userName  = session?.user.name  ?? "";
-  const userEmail = session?.user.email ?? "";
+  const userName  = user?.name  ?? "";
+  const userEmail = user?.email ?? "";
   const initials  = userName
     ? userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : userEmail.slice(0, 2).toUpperCase();
