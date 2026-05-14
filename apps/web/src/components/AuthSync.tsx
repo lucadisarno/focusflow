@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useSession } from "@/lib/auth";
+import { useSession } from "@/lib/auth-client";
 import { useAuthStore } from "@/store/useAuthStore";
 
 // ─── AuthSync ─────────────────────────────────────────────
