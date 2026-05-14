@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { useFilterStore } from "@/store/useFilterStore";
 import { taskApi, type Task, apiFetch } from "@/lib/api";
 import { getCategories, type Category } from "@/api/categories";
 import { getTags, type Tag } from "@/api/tags";
@@ -13,14 +14,12 @@ import {
 import { ICON_OPTIONS } from "@/components/ui/icon-picker";
 import { SlidersHorizontal, X, Plus, Loader2, CheckSquare, Circle, RefreshCw, Trash2, CalendarDays } from "lucide-react";
 
-// ─── Icona categoria ──────────────────────────────────────
 function CategoryIcon({ name, color, size = 14 }: { name: string; color: string; size?: number }) {
   const IconComponent = ICON_OPTIONS.find((i) => i.name === name)?.icon;
   if (!IconComponent) return null;
   return <IconComponent size={size} style={{ color }} />;
 }
 
-// ─── Tag multi-select ─────────────────────────────────────
 function TagMultiSelect({ tags, selectedIds, onChange }: {
   tags: Tag[]; selectedIds: string[]; onChange: (ids: string[]) => void;
 }) {
@@ -52,7 +51,6 @@ function TagMultiSelect({ tags, selectedIds, onChange }: {
   );
 }
 
-// ─── Status config ────────────────────────────────────────
 const statusConfig = {
   TODO:        { label: "Da fare",    bg: "var(--ff-amber-light)",  color: "var(--ff-amber-dark)",  icon: Circle },
   IN_PROGRESS: { label: "In corso",   bg: "var(--ff-violet-light)", color: "var(--ff-violet)",      icon: RefreshCw },
@@ -71,7 +69,6 @@ function nextStatus(current: Task["status"]): Task["status"] {
   return "TODO";
 }
 
-// ─── Status pill ──────────────────────────────────────────
 function StatusPill({ status }: { status: Task["status"] }) {
   const s = statusConfig[status];
   return (
@@ -82,7 +79,6 @@ function StatusPill({ status }: { status: Task["status"] }) {
   );
 }
 
-// ─── Priority pill ────────────────────────────────────────
 function PriorityPill({ priority }: { priority: Task["priority"] }) {
   const p = priorityConfig[priority];
   return (
@@ -93,13 +89,8 @@ function PriorityPill({ priority }: { priority: Task["priority"] }) {
   );
 }
 
-// ─── CategoryTriggerLabel ─────────────────────────────────
-function CategoryTriggerLabel({
-  value, categories, placeholder,
-}: {
-  value: string | null | undefined;
-  categories: Category[];
-  placeholder: string;
+function CategoryTriggerLabel({ value, categories, placeholder }: {
+  value: string | null | undefined; categories: Category[]; placeholder: string;
 }) {
   if (!value || value === "none" || value === "ALL") {
     return <span className="text-muted-foreground">{placeholder}</span>;
@@ -114,13 +105,8 @@ function CategoryTriggerLabel({
   );
 }
 
-// ─── TagTriggerLabel ──────────────────────────────────────
-function TagTriggerLabel({
-  value, tags, placeholder,
-}: {
-  value: string | null | undefined;
-  tags: Tag[];
-  placeholder: string;
+function TagTriggerLabel({ value, tags, placeholder }: {
+  value: string | null | undefined; tags: Tag[]; placeholder: string;
 }) {
   if (!value || value === "ALL") {
     return <span className="text-muted-foreground">{placeholder}</span>;
@@ -135,7 +121,6 @@ function TagTriggerLabel({
   );
 }
 
-// ─── TaskStats ────────────────────────────────────────────
 function TaskStats({ tasks }: { tasks: Task[] }) {
   const stats = useMemo(() => ({
     total:       tasks.length,
@@ -154,36 +139,28 @@ function TaskStats({ tasks }: { tasks: Task[] }) {
       </div>
       <div className="rounded-[--radius-xl] border bg-card px-4 py-3 text-center"
         style={{ borderColor: "var(--ff-amber-light)" }}>
-        <p className="text-2xl font-semibold" style={{ color: "var(--ff-amber-dark)" }}>
-          {stats.todo}
-        </p>
+        <p className="text-2xl font-semibold" style={{ color: "var(--ff-amber-dark)" }}>{stats.todo}</p>
         <p className="text-xs text-muted-foreground mt-0.5">Da fare</p>
       </div>
       <div className="rounded-[--radius-xl] border bg-card px-4 py-3 text-center"
         style={{ borderColor: "var(--ff-violet-light)" }}>
-        <p className="text-2xl font-semibold" style={{ color: "var(--ff-violet)" }}>
-          {stats.in_progress}
-        </p>
+        <p className="text-2xl font-semibold" style={{ color: "var(--ff-violet)" }}>{stats.in_progress}</p>
         <p className="text-xs text-muted-foreground mt-0.5">In corso</p>
       </div>
       <div className="rounded-[--radius-xl] border bg-card px-4 py-3 text-center"
         style={{ borderColor: "var(--ff-teal-light)" }}>
-        <p className="text-2xl font-semibold" style={{ color: "var(--ff-teal)" }}>
-          {stats.done}
-        </p>
+        <p className="text-2xl font-semibold" style={{ color: "var(--ff-teal)" }}>{stats.done}</p>
         <p className="text-xs text-muted-foreground mt-0.5">Completati</p>
       </div>
     </div>
   );
 }
 
-// ─── Tipi filtri ──────────────────────────────────────────
 interface Filters {
   status: string; priority: string; categoryId: string;
   tagId: string; dateFrom: string; dateTo: string;
 }
 
-// ─── TASK PAGE ────────────────────────────────────────────
 export function TaskPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -197,13 +174,26 @@ export function TaskPage() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showForm, setShowForm]             = useState(false);
 
+  // ── Zustand — filtri persistenti tra navigazioni ──────────
+  // status, priority, categoryId sopravvivono alla navigazione
+  // tagId, dateFrom, dateTo restano su searchParams
+  const {
+    status:     zustandStatus,
+    priority:   zustandPriority,
+    categoryId: zustandCategoryId,
+    setStatus,
+    setPriority:   setZustandPriority,
+    setCategoryId: setZustandCategoryId,
+    clearFilters:  clearZustandFilters,
+  } = useFilterStore();
+
   const filters: Filters = {
-    status:     String(searchParams.get("status")     ?? ""),
-    priority:   String(searchParams.get("priority")   ?? ""),
-    categoryId: String(searchParams.get("categoryId") ?? ""),
-    tagId:      String(searchParams.get("tagId")      ?? ""),
-    dateFrom:   String(searchParams.get("dateFrom")   ?? ""),
-    dateTo:     String(searchParams.get("dateTo")     ?? ""),
+    status:     zustandStatus,
+    priority:   zustandPriority,
+    categoryId: zustandCategoryId,
+    tagId:      String(searchParams.get("tagId")    ?? ""),
+    dateFrom:   String(searchParams.get("dateFrom") ?? ""),
+    dateTo:     String(searchParams.get("dateTo")   ?? ""),
   };
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -214,11 +204,11 @@ export function TaskPage() {
     setSearchParams(next);
   };
 
-  const clearFilters = () => setSearchParams(new URLSearchParams());
+  const clearFilters = () => {
+    clearZustandFilters();
+    setSearchParams(new URLSearchParams());
+  };
 
-  // ── useQuery: tasks ───────────────────────────────────────
-  // queryKey include filters → ogni volta che i filtri cambiano
-  // (via searchParams) TanStack Query rifetch automaticamente.
   const { data: tasks = [], isLoading: loading, isError } = useQuery({
     queryKey: ["tasks", filters],
     queryFn: () => {
@@ -234,21 +224,16 @@ export function TaskPage() {
     },
   });
 
-  // ── useQuery: categories ──────────────────────────────────
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: getCategories,
   });
 
-  // ── useQuery: tags ────────────────────────────────────────
   const { data: tags = [] } = useQuery({
     queryKey: ["tags"],
     queryFn: getTags,
   });
 
-  // ── useMutation: createTask ───────────────────────────────
-  // onSuccess → invalida la cache "tasks" → useQuery rifetch
-  // automaticamente → la lista si aggiorna senza setState manuale.
   const createMutation = useMutation({
     mutationFn: (data: {
       title: string; description: string; priority: "LOW" | "MEDIUM" | "HIGH";
@@ -262,21 +247,15 @@ export function TaskPage() {
     },
   });
 
-  // ── useMutation: toggleStatus ─────────────────────────────
   const toggleStatusMutation = useMutation({
     mutationFn: (task: Task) =>
       taskApi.update(task.id, { status: nextStatus(task.status) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tasks"] }); },
   });
 
-  // ── useMutation: deleteTask ───────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: (id: string) => taskApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tasks"] }); },
   });
 
   const handleCreate = (e: React.FormEvent) => {
@@ -290,7 +269,6 @@ export function TaskPage() {
     });
   };
 
-  // ── useCallback mantenuti per stabilità delle props ───────
   const handleToggleStatus = useCallback((task: Task) => {
     toggleStatusMutation.mutate(task);
   }, [toggleStatusMutation]);
@@ -301,26 +279,17 @@ export function TaskPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
-
-      {/* ── Header ── */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground">
-            Gestione
-          </p>
+          <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground">Gestione</p>
           <h1 className="font-display text-3xl text-foreground">I miei Task</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestisci e organizza i tuoi task
-          </p>
+          <p className="text-sm text-muted-foreground">Gestisci e organizza i tuoi task</p>
         </div>
-
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => setShowFilters((v) => !v)}
+          <button onClick={() => setShowFilters((v) => !v)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[--radius-pill]
                        text-sm font-medium border border-border bg-card text-foreground
-                       hover:bg-muted transition-all duration-200"
-          >
+                       hover:bg-muted transition-all duration-200">
             <SlidersHorizontal size={14} />
             Filtri
             {activeFilterCount > 0 && (
@@ -330,23 +299,18 @@ export function TaskPage() {
               </span>
             )}
           </button>
-
-          <button
-            onClick={() => setShowForm((v) => !v)}
+          <button onClick={() => setShowForm((v) => !v)}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[--radius-pill]
                        text-sm font-medium transition-all duration-200 active:scale-95"
-            style={{ backgroundColor: "var(--ff-violet)", color: "white" }}
-          >
+            style={{ backgroundColor: "var(--ff-violet)", color: "white" }}>
             <Plus size={15} />
             Nuovo task
           </button>
         </div>
       </div>
 
-      {/* ── TaskStats ── */}
       {!loading && <TaskStats tasks={tasks} />}
 
-      {/* ── Form creazione ── */}
       {showForm && (
         <div className="rounded-[--radius-xl] border border-[--ff-violet-light] bg-card p-6 space-y-4">
           <div className="flex items-center justify-between mb-1">
@@ -356,27 +320,13 @@ export function TaskPage() {
               <X size={14} />
             </button>
           </div>
-
           <form onSubmit={handleCreate} className="space-y-4">
-            <Input
-              placeholder="Titolo del task..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={createMutation.isPending}
-              autoFocus
-              className="h-10 rounded-[--radius-lg] focus-visible:ring-[--ff-violet]
-                         focus-visible:ring-2 focus-visible:ring-offset-0"
-            />
-            <Textarea
-              placeholder="Descrizione (opzionale)..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={createMutation.isPending}
-              rows={2}
-              className="rounded-[--radius-lg] resize-none focus-visible:ring-[--ff-violet]
-                         focus-visible:ring-2 focus-visible:ring-offset-0"
-            />
-
+            <Input placeholder="Titolo del task..." value={title}
+              onChange={(e) => setTitle(e.target.value)} disabled={createMutation.isPending} autoFocus
+              className="h-10 rounded-[--radius-lg] focus-visible:ring-[--ff-violet] focus-visible:ring-2 focus-visible:ring-offset-0" />
+            <Textarea placeholder="Descrizione (opzionale)..." value={description}
+              onChange={(e) => setDescription(e.target.value)} disabled={createMutation.isPending} rows={2}
+              className="rounded-[--radius-lg] resize-none focus-visible:ring-[--ff-violet] focus-visible:ring-2 focus-visible:ring-offset-0" />
             <div className="grid grid-cols-2 gap-3">
               <Select value={priority} onValueChange={(v) => setPriority(v as "LOW" | "MEDIUM" | "HIGH")}>
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
@@ -388,11 +338,7 @@ export function TaskPage() {
                   <SelectItem value="HIGH">Alta</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Select
-                value={categoryId || "none"}
-                onValueChange={(v) => setCategoryId(v === "none" ? "" : (v ?? ""))}
-              >
+              <Select value={categoryId || "none"} onValueChange={(v) => setCategoryId(v === "none" ? "" : (v ?? ""))}>
                 <SelectTrigger className="h-10 rounded-[--radius-lg]">
                   <CategoryTriggerLabel value={categoryId} categories={categories} placeholder="Categoria" />
                 </SelectTrigger>
@@ -409,32 +355,24 @@ export function TaskPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground">Scadenza (opzionale)</p>
-              <Input type="date" value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
                 disabled={createMutation.isPending}
-                className="h-10 rounded-[--radius-lg] focus-visible:ring-[--ff-violet]
-                           focus-visible:ring-2 focus-visible:ring-offset-0" />
+                className="h-10 rounded-[--radius-lg] focus-visible:ring-[--ff-violet] focus-visible:ring-2 focus-visible:ring-offset-0" />
             </div>
-
             {tags.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground">Tag</p>
                 <TagMultiSelect tags={tags} selectedIds={selectedTagIds} onChange={setSelectedTagIds} />
               </div>
             )}
-
             <div className="flex justify-end pt-1">
-              <button
-                type="submit"
-                disabled={createMutation.isPending || !title.trim()}
+              <button type="submit" disabled={createMutation.isPending || !title.trim()}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[--radius-pill]
                            text-sm font-medium transition-all duration-200 active:scale-95
                            disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: "var(--ff-violet)", color: "white" }}
-              >
+                style={{ backgroundColor: "var(--ff-violet)", color: "white" }}>
                 {createMutation.isPending && <Loader2 size={13} className="animate-spin" />}
                 {createMutation.isPending ? "Creando..." : "Crea task"}
               </button>
@@ -443,29 +381,23 @@ export function TaskPage() {
         </div>
       )}
 
-      {/* ── Filtri ── */}
       {showFilters && (
         <div className="rounded-[--radius-xl] border border-border bg-card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-foreground">Filtri attivi</h2>
             {activeFilterCount > 0 && (
               <button onClick={clearFilters}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground
-                           hover:text-foreground transition-colors">
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                 <X size={12} /> Azzera
               </button>
             )}
           </div>
-
           <div className="grid grid-cols-2 gap-3">
+            {/* status → Zustand */}
             <Select value={filters.status || "ALL"}
-              onValueChange={(v) => updateFilter("status", v === "ALL" ? "" : (v ?? ""))}>
+              onValueChange={(v) => setStatus(v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                <span>
-                  {filters.status
-                    ? (statusConfig[filters.status as keyof typeof statusConfig]?.label ?? filters.status)
-                    : "Tutti gli status"}
-                </span>
+                <span>{filters.status ? (statusConfig[filters.status as keyof typeof statusConfig]?.label ?? filters.status) : "Tutti gli status"}</span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutti gli status</SelectItem>
@@ -475,14 +407,11 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
+            {/* priority → Zustand */}
             <Select value={filters.priority || "ALL"}
-              onValueChange={(v) => updateFilter("priority", v === "ALL" ? "" : (v ?? ""))}>
+              onValueChange={(v) => setZustandPriority(v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
-                <span>
-                  {filters.priority
-                    ? (priorityConfig[filters.priority as keyof typeof priorityConfig]?.label ?? filters.priority)
-                    : "Tutte le priorità"}
-                </span>
+                <span>{filters.priority ? (priorityConfig[filters.priority as keyof typeof priorityConfig]?.label ?? filters.priority) : "Tutte le priorità"}</span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tutte le priorità</SelectItem>
@@ -492,8 +421,9 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
+            {/* categoryId → Zustand */}
             <Select value={filters.categoryId || "ALL"}
-              onValueChange={(v) => updateFilter("categoryId", v === "ALL" ? "" : (v ?? ""))}>
+              onValueChange={(v) => setZustandCategoryId(v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
                 <CategoryTriggerLabel value={filters.categoryId} categories={categories} placeholder="Tutte le categorie" />
               </SelectTrigger>
@@ -510,6 +440,7 @@ export function TaskPage() {
               </SelectContent>
             </Select>
 
+            {/* tagId → searchParams */}
             <Select value={filters.tagId || "ALL"}
               onValueChange={(v) => updateFilter("tagId", v === "ALL" ? "" : (v ?? ""))}>
               <SelectTrigger className="h-9 text-xs rounded-[--radius-lg]">
@@ -528,25 +459,21 @@ export function TaskPage() {
               </SelectContent>
             </Select>
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Da data</p>
               <Input type="date" className="h-9 text-xs rounded-[--radius-lg]"
-                value={filters.dateFrom}
-                onChange={(e) => updateFilter("dateFrom", e.target.value)} />
+                value={filters.dateFrom} onChange={(e) => updateFilter("dateFrom", e.target.value)} />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">A data</p>
               <Input type="date" className="h-9 text-xs rounded-[--radius-lg]"
-                value={filters.dateTo}
-                onChange={(e) => updateFilter("dateTo", e.target.value)} />
+                value={filters.dateTo} onChange={(e) => updateFilter("dateTo", e.target.value)} />
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Errore ── */}
       {isError && (
         <div className="rounded-[--radius-lg] px-4 py-3 text-sm"
           style={{ backgroundColor: "var(--ff-coral-light)", color: "var(--ff-coral)" }}>
@@ -554,7 +481,6 @@ export function TaskPage() {
         </div>
       )}
 
-      {/* ── Lista task ── */}
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="animate-spin text-muted-foreground" size={24} />
@@ -567,51 +493,36 @@ export function TaskPage() {
           </div>
           <p className="text-sm font-medium text-foreground mb-1">Nessun task trovato</p>
           <p className="text-xs text-muted-foreground">
-            {activeFilterCount > 0
-              ? "Prova a modificare i filtri attivi."
-              : "Crea il tuo primo task con il bottone in alto."}
+            {activeFilterCount > 0 ? "Prova a modificare i filtri attivi." : "Crea il tuo primo task con il bottone in alto."}
           </p>
         </div>
       ) : (
         <div className="space-y-2">
           {tasks.map((task) => (
-            <div
-              key={task.id}
+            <div key={task.id}
               className={`group rounded-[--radius-xl] border border-border bg-card px-5 py-4
                           hover:shadow-[0_4px_20px_-8px_rgba(92,74,228,0.10)]
                           hover:-translate-y-0.5 hover:border-[--ff-violet-light]
                           transition-all duration-200
-                          ${task.status === "DONE" ? "opacity-60" : ""}`}
-            >
+                          ${task.status === "DONE" ? "opacity-60" : ""}`}>
               <div className="flex items-start gap-4">
-                <button
-                  type="button"
-                  onClick={() => handleToggleStatus(task)}
+                <button type="button" onClick={() => handleToggleStatus(task)}
                   title={`Status: ${statusConfig[task.status].label} — clicca per avanzare`}
-                  className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
-                             transition-all duration-150 hover:scale-110"
-                  style={{
-                    backgroundColor: statusConfig[task.status].bg,
-                    color: statusConfig[task.status].color,
-                  }}
-                >
+                  className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110"
+                  style={{ backgroundColor: statusConfig[task.status].bg, color: statusConfig[task.status].color }}>
                   {(() => { const Icon = statusConfig[task.status].icon; return <Icon size={13} />; })()}
                 </button>
-
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`text-sm font-medium leading-snug
-                                   ${task.status === "DONE" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                    <p className={`text-sm font-medium leading-snug ${task.status === "DONE" ? "line-through text-muted-foreground" : "text-foreground"}`}>
                       {task.title}
                     </p>
                     <StatusPill status={task.status} />
                     <PriorityPill priority={task.priority} />
                   </div>
-
                   {task.description && (
                     <p className="text-xs text-muted-foreground leading-relaxed">{task.description}</p>
                   )}
-
                   <div className="flex flex-wrap items-center gap-2">
                     {task.dueDate && (
                       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -635,14 +546,11 @@ export function TaskPage() {
                     ))}
                   </div>
                 </div>
-
-                <button
-                  onClick={() => handleDelete(task.id)}
+                <button onClick={() => handleDelete(task.id)}
                   className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1.5 rounded-lg
                              text-muted-foreground hover:text-[--ff-coral] hover:bg-[--ff-coral-light]
                              transition-all duration-150"
-                  title="Elimina task"
-                >
+                  title="Elimina task">
                   <Trash2 size={14} />
                 </button>
               </div>
